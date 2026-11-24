@@ -22,7 +22,7 @@ namespace Gamepad
         readonly List<Button> choices = new List<Button>();
         int page;
         readonly ComboBox profileName = new ComboBox { Width = 184, DropDownStyle = ComboBoxStyle.DropDown };
-        readonly ComboBox device = Combo(), primary = Combo(), display = Combo(), layout = Combo();
+        readonly ComboBox device = Combo(), primary = Combo(), display = Combo(), layout = Combo(), startup = Combo();
         readonly NumericUpDown speed = Number(100, 4000, 0, 50), dead = Number(2, 75, 0, 1),
                                curve = Number(.5m, 4, 2, .05m), height = Number(28, 52, 0, 1);
         readonly Label status = Caption(""), capabilities = Caption("");
@@ -85,6 +85,8 @@ namespace Gamepad
             }
             primary.Items.Insert(0, "自动锁定首个接入槽位");
             layout.Items.AddRange(KeyboardModel.Layouts);
+            startup.AccessibleName = "启动模式";
+            startup.Items.AddRange(new[] { "桌面键鼠", "原生手柄", "沿用上次退出模式" });
             display.Items.Add("跟随目标输入框");
             display.Items.AddRange(Screen.AllScreens.Select(s => s.DeviceName).ToArray());
             SetupGrid();
@@ -132,6 +134,7 @@ namespace Gamepad
             height.Value = draft.KeyboardHeight;
             display.SelectedIndex = Math.Max(0, display.Items.IndexOf(draft.Display));
             layout.SelectedItem = draft.StartLayout;
+            startup.SelectedIndex = Array.IndexOf(Settings.StartupModes, draft.StartupMode);
             apps.Lines = draft.GameApps;
             loading = false;
             deviceId = null;
@@ -279,7 +282,7 @@ namespace Gamepad
             content.SuspendLayout();
             foreach (Control shared in new Control[] { heading, status, primary, device, capabilities, live, speed,
                                                        dead, curve, profileName, combination, grid, auto, layout,
-                                                       display, height, apps })
+                                                       display, height, apps, startup })
                 if (shared.Parent != null)
                     shared.Parent.Controls.Remove(shared);
             foreach (Control old in content.Controls.Cast<Control>().ToArray())
@@ -300,6 +303,7 @@ namespace Gamepad
             {
                 f.Controls.Add(status);
                 f.Controls.Add(Line("主控手柄", primary));
+                f.Controls.Add(Line("启动模式", startup));
                 f.Controls.Add(Line("查看设备", device));
                 f.Controls.Add(capabilities);
                 live.Width = Math.Max(440, content.ClientSize.Width - 58);
@@ -403,6 +407,7 @@ namespace Gamepad
             draft.AutoKeyboard = auto.Checked;
             draft.Display = display.SelectedIndex <= 0 ? "" : display.Text;
             draft.StartLayout = layout.Text;
+            draft.StartupMode = Settings.StartupModes[Math.Max(0, startup.SelectedIndex)];
             draft.KeyboardHeight = (int)height.Value;
             draft.GameApps = apps.Lines.Select(s => s.Trim())
                                  .Where(s => s.Length > 0)

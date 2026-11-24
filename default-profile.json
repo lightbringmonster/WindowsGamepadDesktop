@@ -4,6 +4,8 @@
   "AutoKeyboard": true,
   "Display": "",
   "StartLayout": "English",
+  "StartupMode": "Desktop",
+  "LastNativeMode": false,
   "KeyboardHeight": 41,
   "AssignedProfiles": {},
   "GameApps": [

@@ -8,6 +8,8 @@ Windows 11 x64 手柄桌面控制器。使用 Xbox 字母标记，桌面与屏�
 
 ![Windows Gamepad Desktop 拼音键盘，显示整句候选与手柄按键提示](docs/images/keyboard-pinyin.png)
 
+[下载 Windows x64 便携版](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest)
+
 ## 从源码构建
 
 需要 Windows 11 x64，使用系统自带的 .NET Framework 4.8 系列编译器。构建无需安装 .NET SDK、NuGet 或 Node.js。
@@ -30,6 +32,8 @@ cd WindowsGamepadDesktop
 5. 需要随 Windows 登录启动时，在托盘勾选「登录时自启动」。先把便携目录放在长期使用的位置。移动目录后，重新从新路径运行并勾选一次。初始默认关闭。
 
 **紧急暂停**使用 Ctrl + Alt + F12。恢复时从托盘取消「暂停映射」。快捷键被占用时，设备页会显示提示。再次双击正在运行的程序会打开设置。
+
+默认启动进入桌面键鼠模式。在「设置 → 设备 → 启动模式」可改为原生手柄，或沿用上次正常退出时的模式。设置从下次启动生效。
 
 ## 桌面映射
 

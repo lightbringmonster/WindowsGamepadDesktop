@@ -113,6 +113,13 @@ namespace Gamepad
         public bool AutoKeyboard { get; set; }
         public string Display { get; set; }
         public string StartLayout { get; set; }
+        public string StartupMode { get; set; }
+        public bool LastNativeMode { get; set; }
+        internal static readonly string[] StartupModes = { "Desktop", "Native", "LastUsed" };
+        internal bool StartsNative
+        {
+            get { return StartupMode == "Native" || (StartupMode == "LastUsed" && LastNativeMode); }
+        }
         public int KeyboardHeight { get; set; }
         public Dictionary<string, string> AssignedProfiles { get; set; }
         public string[] GameApps { get; set; }
@@ -125,6 +132,7 @@ namespace Gamepad
             AutoKeyboard = true;
             Display = "";
             StartLayout = "English";
+            StartupMode = "Desktop";
             KeyboardHeight = 41;
             GameApps = new[] { "Playnite.FullscreenApp.exe" };
             Profiles = new Dictionary<string, Profile>();
@@ -146,7 +154,7 @@ namespace Gamepad
                                           p.Value.Length > 64 || !Profiles.ContainsKey("profile/" + p.Value)))
                 throw new FormatException("设备配置引用无效");
             if (Version != 2 || Profiles == null || GameApps == null || Primary == null || Display == null ||
-                KeyboardHeight < 28 || KeyboardHeight > 52 ||
+                KeyboardHeight < 28 || KeyboardHeight > 52 || !StartupModes.Contains(StartupMode) ||
                 !new[] { "English", "拼音", "数字符号", "系统 IME", "编辑" }.Contains(StartLayout))
                 throw new FormatException("配置版本或键盘设置无效");
             if (GameApps.Length > 256 ||

@@ -12,6 +12,7 @@ namespace Gamepad
         readonly DeviceManager manager;
         readonly MappingEngine engine;
         readonly IInputSink sink;
+        readonly string settingsPath;
         internal Settings Config;
         internal readonly Dictionary<string, ControllerState> States = new Dictionary<string, ControllerState>();
         readonly Stopwatch clock = Stopwatch.StartNew();
@@ -25,12 +26,16 @@ namespace Gamepad
         IntPtr target, observed, lastApp;
         readonly ApplicationProfiles policy = new ApplicationProfiles();
         bool firstRule = true;
-        public Host(Settings cfg, IControllerProvider provider, IInputSink output, bool openSettings)
+        public Host(Settings cfg, IControllerProvider provider, IInputSink output, bool openSettings,
+                    string settingsPath = null)
         {
             Config = cfg;
+            this.settingsPath = settingsPath ?? SettingsStore.Location;
+            game = cfg.StartsNative;
             sink = output;
             manager = new DeviceManager(provider);
             engine = new MappingEngine(sink);
+            engine.SetContext(game, false, false);
             engine.ToggleMode = ToggleGame;
             engine.ModeSwitchReady = ShowSwitchPrompt;
             engine.ToggleModeLock = ToggleModeLock;
@@ -249,12 +254,17 @@ namespace Gamepad
         }
         internal void Apply(Settings next)
         {
-            SettingsStore.Save(SettingsStore.Location, next);
+            if (next.StartupMode == "LastUsed")
+                next.LastNativeMode = game;
+            SettingsStore.Save(settingsPath, next);
             if (Config.Primary != next.Primary)
                 manager.Primary = next.Primary;
+            if (!Config.GameApps.SequenceEqual(next.GameApps, StringComparer.OrdinalIgnoreCase))
+            {
+                policy.Reload();
+                firstRule = true;
+            }
             Config = next;
-            policy.Reload();
-            firstRule = true;
             nextScan = 0;
             CloseKeyboard();
         }
@@ -271,6 +281,25 @@ namespace Gamepad
         partial void ShowSettings();
         partial void CheckFocus(long now);
         partial void OnKeyboardClosed();
+        void RememberMode()
+        {
+            if (Config.StartupMode != "LastUsed" || Config.LastNativeMode == game)
+                return;
+            Config.LastNativeMode = game;
+            try
+            {
+                SettingsStore.Save(settingsPath, Config);
+            }
+            catch (IOException)
+            {
+                Trace.TraceWarning("The last controller mode could not be saved.");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                Trace.TraceWarning("The last controller mode could not be saved.");
+            }
+        }
+
         protected override void ExitThreadCore()
         {
             if (closing)
@@ -278,6 +307,7 @@ namespace Gamepad
             closing = true;
             CloseKeyboard();
             engine.Reset();
+            RememberMode();
             StopSystem();
             tray.Visible = false;
             tray.Dispose();

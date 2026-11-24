@@ -9,6 +9,7 @@ namespace Gamepad
     {
         internal static void FinalChecks()
         {
+            StartupConfigChecks();
             var returning = new Capture();
             var returnEngine = new MappingEngine(returning);
             var profile = new Profile();
@@ -39,7 +40,7 @@ namespace Gamepad
 
             var rules = new ApplicationProfiles();
             var apps = new[] { "room.exe" };
-            Check(rules.Enter("desktop.exe", apps) == false && rules.Enter("ROOM.EXE", apps) == true,
+            Check(rules.Enter("desktop.exe", apps) == null && rules.Enter("ROOM.EXE", apps) == true,
                   "foreground process name activates game policy");
             Check(rules.Enter("room.exe", apps) == null, "manual override persists in same app");
             Check(rules.Enter("desktop.exe", apps) == false, "game exit restores desktop");

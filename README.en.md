@@ -6,6 +6,8 @@ Use an XInput gamepad as a mouse and keyboard on Windows 11 x64. The default lay
 
 ![Pinyin on-screen keyboard with a sentence candidate and controller shortcuts](docs/images/keyboard-pinyin.png)
 
+[Download the Windows x64 portable package](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest)
+
 ## Build from source
 
 Build on Windows 11 x64 with the built-in .NET Framework 4.8 family C# compiler. The build requires no .NET SDK, NuGet packages, or Node.js.
@@ -28,6 +30,8 @@ The build writes to `bin`. To move the app, keep the executable and its sibling 
 5. To start at sign-in, enable **登录时自启动** in the notification area menu. Keep the app in its permanent location. Re-enable this option if you move it.
 
 **Ctrl + Alt + F12** pauses input mapping. Clear **暂停映射** in the notification area menu to resume. Double-click the notification area icon to open settings.
+
+Desktop mode is the default at launch. Under **Settings → 设备 (Devices) → 启动模式 (Startup Mode)**, you can choose native gamepad mode or restore the mode from the last normal exit. The selection applies on the next launch.
 
 ## Desktop controls
 
