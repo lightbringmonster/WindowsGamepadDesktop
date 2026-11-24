@@ -124,6 +124,18 @@ namespace Gamepad
             get { return game || multiplayerProtected; }
         }
 
+        bool ShouldConsumeShellBack()
+        {
+            if (closing || paused || systemBlocked || NativeInputOnly || activeDevice == null)
+                return false;
+            var profile = Config.For(activeDevice.Id);
+            var mapping = keyboard.Visible ? profile.Keyboard : profile.Desktop;
+            string action;
+            return mapping.TryGetValue("B", out action) &&
+                   action == (keyboard.Visible ? "Select" : "MouseLeft") &&
+                   Win.IsSystemGamepadSurface(Win.GetForegroundWindow());
+        }
+
         bool TargetReady()
         {
             return keyboard.Visible && !NativeInputOnly && !paused && target != IntPtr.Zero &&

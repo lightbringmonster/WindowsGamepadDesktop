@@ -322,24 +322,60 @@ namespace Gamepad
             }
             base.WndProc(ref m);
         }
-        internal static Rectangle Place(Rectangle work, Rectangle edit, int heightPercent)
+        internal static Rectangle Place(Rectangle work, Rectangle edit, int heightPercent,
+                                        Rectangle shell = default(Rectangle))
         {
             int width = (int)(work.Width * .94), height = work.Height * heightPercent / 100;
-            var r = new Rectangle(work.Left + (work.Width - width) / 2,
-                                  work.Bottom - height - Math.Max(4, work.Height / 80), width, height);
-            if (!edit.IsEmpty && r.IntersectsWith(edit))
+            int gap = Math.Max(4, work.Height / 80);
+            var position = new Rectangle(work.Left + (work.Width - width) / 2, work.Bottom - height - gap,
+                                         width, height);
+            if (!edit.IsEmpty && position.IntersectsWith(edit))
             {
-                var top = new Rectangle(r.Left, work.Top + work.Height / 80, width, height);
-                if (Rectangle.Intersect(top, edit).Height < Rectangle.Intersect(r, edit).Height)
-                    r = top;
+                var top = new Rectangle(position.Left, work.Top + gap, width, height);
+                if (Rectangle.Intersect(top, edit).Height < Rectangle.Intersect(position, edit).Height)
+                    position = top;
             }
-            return r;
+
+            if (shell.IsEmpty || !position.IntersectsWith(shell))
+                return position;
+
+            var available = Rectangle.Inflate(work, -gap, -gap);
+            var blocked = Rectangle.Intersect(available, Rectangle.Inflate(shell, gap, gap));
+            if (blocked.Width <= 0 || blocked.Height <= 0)
+                return position;
+            var above = Rectangle.FromLTRB(available.Left, available.Top, available.Right, blocked.Top);
+            var below = Rectangle.FromLTRB(available.Left, blocked.Bottom, available.Right, available.Bottom);
+            int sideBottom = Math.Min(available.Bottom, shell.Bottom - gap);
+            var left = Rectangle.FromLTRB(available.Left, available.Top, blocked.Left, sideBottom);
+            var right = Rectangle.FromLTRB(blocked.Right, available.Top, available.Right, sideBottom);
+            int wideHeight = Math.Min(height, Math.Max(130, work.Height / 6));
+            var band = below.Height >= wideHeight ? below : above.Height >= wideHeight ? above : Rectangle.Empty;
+            if (band.IsEmpty)
+                band = new[] { above, below, left, right }
+                    .Where(area => area.Width >= 240 && area.Height >= 110)
+                    .OrderByDescending(area => Math.Min(area.Width / 12.0, area.Height / 11.0))
+                    .FirstOrDefault();
+            if (band.IsEmpty)
+                return Rectangle.Empty;
+
+            int fittedWidth = Math.Min(width, band.Width), fittedHeight = Math.Min(height, band.Height);
+            return new Rectangle(band.Left + (band.Width - fittedWidth) / 2, band.Bottom - fittedHeight,
+                                 fittedWidth, fittedHeight);
         }
+
         public void Present(IntPtr target, Rectangle edit, Settings settings)
         {
             Screen screen = Screen.AllScreens.FirstOrDefault(s => s.DeviceName == settings.Display) ??
                             (!edit.IsEmpty ? Screen.FromRectangle(edit) : Screen.FromHandle(target));
-            Bounds = Place(screen.WorkingArea, edit, settings.KeyboardHeight);
+            // The Search window can sit above a normal topmost window. Keep the keys clear of its bounds.
+            Rectangle shell = Win.IsStartSearchSurface(target) ? Win.WindowBounds(target) : Rectangle.Empty;
+            Rectangle position = Place(screen.WorkingArea, edit, settings.KeyboardHeight, shell);
+            if (position.IsEmpty)
+            {
+                var secondary = Screen.AllScreens.FirstOrDefault(other => other.DeviceName != screen.DeviceName);
+                position = Place((secondary ?? screen).WorkingArea, edit, settings.KeyboardHeight);
+            }
+            Bounds = position;
             if (!Visible)
                 Show();
             Invalidate();
@@ -448,7 +484,7 @@ namespace Gamepad
             }
             var textBox = Rectangle.Inflate(box, -Math.Min(8, box.Width / 6), 0);
             float targetSize = box.Height * (utility ? .36f : .50f);
-            float fit = textBox.Width / Math.Max(1.4f, label.Length + .4f);
+            float fit = textBox.Width / (label.Length == 1 ? 1.4f : label.Length + 1f);
             Label(g, label, textBox, Math.Max(10, Math.Min(targetSize, fit)), selected ? AccentInk : Ink, selected,
                   true);
         }
@@ -466,13 +502,16 @@ namespace Gamepad
             using (var outline = Rounded(Rectangle.Inflate(ClientRectangle, -1, -1), PanelRadius)) using (
                 var edge = new Pen(Border)) g.DrawPath(edge, outline);
 
-            int padding = Math.Max(16, width / 40), header = height * 17 / 100, footer = height * 11 / 100;
+            int padding = Math.Max(12, width / 40), header = height * 17 / 100, footer = height * 11 / 100;
+            bool wrapLegend = width < 760;
+            if (wrapLegend)
+                footer = Math.Max(38, footer);
             int contentWidth = width - padding * 2;
             DrawHeader(g, new Rectangle(padding, 0, contentWidth, header));
             using (var divider = new Pen(Border))
                 g.DrawLine(divider, padding, header - 3, width - padding, header - 3);
             int area = height - header - footer - 8, rowCount = model.Rows.Count;
-            int gap = Math.Max(4, width / 240);
+            int gap = Math.Max(3, Math.Min(width / 240, height / 55));
             hits.Clear();
 
             for (int r = 0; r < rowCount; r++)
@@ -498,8 +537,16 @@ namespace Gamepad
                 }
             }
             string legend = model.Layout == 1 ? Legend.Replace("  空格", "  首选 / 空格") : Legend;
-            Label(g, legend, new Rectangle(padding, height - footer, contentWidth, footer),
-                  Math.Min(footer * .43f, contentWidth / 74f), Muted, false, false);
+            var legendBounds = new Rectangle(padding, height - footer, contentWidth, footer);
+            if (wrapLegend)
+            {
+                using (var font = new Font("Microsoft YaHei UI", Math.Min(14, footer * .28f),
+                                          FontStyle.Regular, GraphicsUnit.Pixel))
+                    TextRenderer.DrawText(g, legend, font, legendBounds, Muted,
+                                          TextFormatFlags.WordBreak | TextFormatFlags.VerticalCenter);
+            }
+            else
+                Label(g, legend, legendBounds, Math.Min(footer * .43f, contentWidth / 74f), Muted, false, false);
         }
         protected override void OnMouseDown(MouseEventArgs e)
         {

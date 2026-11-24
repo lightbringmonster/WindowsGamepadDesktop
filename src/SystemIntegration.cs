@@ -224,6 +224,7 @@ namespace Gamepad
     internal sealed partial class Host
     {
         MessageSink messages;
+        ShellBackKeyFilter shellBack;
         ModeToast toast;
         SettingsWindow settings;
         internal bool HotkeyAvailable
@@ -247,6 +248,7 @@ namespace Gamepad
         partial void InitializeSystem()
         {
             toast = new ModeToast();
+            shellBack = new ShellBackKeyFilter(ShouldConsumeShellBack);
             messages = new MessageSink(() => Pause(true), CancelFocusRequest,
                                        locked =>
                                        {
@@ -257,6 +259,8 @@ namespace Gamepad
         }
         partial void StopSystem()
         {
+            if (shellBack != null)
+                shellBack.Dispose();
             if (focus != null)
                 focus.Dispose();
             if (settings != null)

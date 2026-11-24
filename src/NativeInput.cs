@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Runtime.InteropServices;
 namespace Gamepad
 {
@@ -22,13 +23,60 @@ namespace Gamepad
         {
             if (hwnd == IntPtr.Zero)
                 return true;
-            var s = new System.Text.StringBuilder(128);
-            GetClassName(hwnd, s, s.Capacity);
-            var name = s.ToString();
+            string name = WindowClass(hwnd);
             return name == "Shell_TrayWnd" || name == "Shell_SecondaryTrayWnd" ||
                    name == "NotifyIconOverflowWindow" || name == "TopLevelWindowForOverflowXamlIsland" ||
                    name == "#32768";
         }
+        static string WindowClass(IntPtr window)
+        {
+            var name = new System.Text.StringBuilder(128);
+            GetClassName(window, name, name.Capacity);
+            return name.ToString();
+        }
+
+        static bool IsStartSearchProcess(string name)
+        {
+            return name == "StartMenuExperienceHost" || name == "SearchHost" || name == "SearchApp";
+        }
+
+        internal static bool IsStartSearchSurface(IntPtr window)
+        {
+            return WindowClass(window) == "Windows.UI.Core.CoreWindow" && IsStartSearchProcess(ProcessNameOf(window));
+        }
+
+        internal static bool IsSystemGamepadSurface(IntPtr window)
+        {
+            switch (WindowClass(window))
+            {
+            case "Windows.UI.Core.CoreWindow":
+                return IsStartSearchProcess(ProcessNameOf(window));
+            case "Shell_TrayWnd":
+            case "Shell_SecondaryTrayWnd":
+            case "NotifyIconOverflowWindow":
+            case "TopLevelWindowForOverflowXamlIsland":
+                return String.Equals(ProcessNameOf(window), "explorer", StringComparison.OrdinalIgnoreCase);
+            case "ControlCenterWindow":
+                string name = ProcessNameOf(window);
+                return name == "ShellHost" || name == "ShellExperienceHost";
+            default:
+                return false;
+            }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct WindowRectangle { public int Left, Top, Right, Bottom; }
+        [DllImport("user32.dll")]
+        static extern bool GetWindowRect(IntPtr window, out WindowRectangle bounds);
+
+        internal static Rectangle WindowBounds(IntPtr window)
+        {
+            WindowRectangle bounds;
+            return GetWindowRect(window, out bounds)
+                 ? Rectangle.FromLTRB(bounds.Left, bounds.Top, bounds.Right, bounds.Bottom)
+                 : Rectangle.Empty;
+        }
+
         [DllImport("user32.dll")]
         internal static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")]
