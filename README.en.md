@@ -72,6 +72,12 @@ Desktop bindings accept actions such as `Key:Ctrl+Shift+S`, `Key:F5`, `Keyboard`
 
 Settings are stored in `%LOCALAPPDATA%\WindowsGamepadDesktop\settings.json`. Imports appear as a draft until saved. Exports include named profiles. The repository includes [the default profile](default-profile.json).
 
+## Local multiplayer
+
+One primary controller operates the desktop and the on-screen keyboard. If it disconnects, the app waits for it to return. You can select another controller in the Devices settings.
+
+For games that use two controllers, add the actual game executable under **Settings → 应用规则 → 本地多人保护** (App Rules → Local Multiplayer Protection) and save. While that game is in the foreground, the app suspends keyboard and mouse mapping and releases any simulated held inputs. Protection applies while desktop mode is locked. The game reads and assigns the controllers directly. When the game leaves the foreground, the app resumes its regular mode and application rules.
+
 ## Compatibility
 
 Native gamepad mode stops this app's simulated keyboard and mouse events. Games can still read the controller and manage vibration. Windows also allows Steam Input and manufacturer tools to read the same controller. If one press triggers two clicks, pause this app and check whether the other mapping is still active.

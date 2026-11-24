@@ -21,7 +21,7 @@ namespace Gamepad
         readonly ContextMenuStrip menu = new ContextMenuStrip();
         IControllerDevice activeDevice;
         long nextScan;
-        bool paused, game, modeLocked, closing;
+        bool paused, game, modeLocked, multiplayerProtected, closing;
         IntPtr target, observed, lastApp;
         readonly ApplicationProfiles policy = new ApplicationProfiles();
         bool firstRule = true;
@@ -79,6 +79,8 @@ namespace Gamepad
         internal string ModeName
         {
             get {
+                if (multiplayerProtected)
+                    return "本地多人保护 · 原生手柄";
                 string status = paused ? "已暂停" : game ? "原生手柄" : "桌面键鼠";
                 return modeLocked ? status + " · 已锁定" : status;
             }
@@ -88,8 +90,8 @@ namespace Gamepad
             menu.Items.Clear();
             var status = menu.Items.Add("当前模式  ·  " + ModeName);
             status.Enabled = false;
-            menu.Items.Add("切换控制模式", null, (s, e) => ToggleGame()).Enabled = !modeLocked;
-            menu.Items.Add("呼出虚拟键盘", null, (s, e) => RequestTrayKeyboard()).Enabled = !game && !paused;
+            menu.Items.Add("切换控制模式", null, (s, e) => ToggleGame()).Enabled = !modeLocked && !multiplayerProtected;
+            menu.Items.Add("呼出虚拟键盘", null, (s, e) => RequestTrayKeyboard()).Enabled = !NativeInputOnly && !paused;
             menu.Items.Add("设置", null, (s, e) => ShowSettings());
             var pause = new ToolStripMenuItem("暂停映射", null, (s, e) => Pause(!paused));
             pause.Checked = paused;
@@ -117,9 +119,14 @@ namespace Gamepad
             };
             delay.Start();
         }
+        bool NativeInputOnly
+        {
+            get { return game || multiplayerProtected; }
+        }
+
         bool TargetReady()
         {
-            return keyboard.Visible && !game && !paused && target != IntPtr.Zero &&
+            return keyboard.Visible && !NativeInputOnly && !paused && target != IntPtr.Zero &&
                    target == Win.GetForegroundWindow() && Win.IsWindow(target);
         }
         void ToggleKeyboard()
@@ -131,14 +138,14 @@ namespace Gamepad
         }
         void OpenKeyboard(Rectangle bounds, string layout)
         {
-            if (paused || game || closing)
+            if (paused || NativeInputOnly || closing)
                 return;
             var foreground = Win.GetForegroundWindow();
             if (foreground == IntPtr.Zero || foreground == keyboard.Handle)
                 return;
             target = foreground;
             model.Open(layout);
-            engine.SetContext(game, paused, true);
+            engine.SetContext(NativeInputOnly, paused, true);
             keyboard.Legend =
                 ActiveId == null ? KeyboardWindow.DefaultLegend : KeyboardWindow.MakeLegend(Config.For(ActiveId));
             keyboard.Present(target, bounds, Config);
@@ -160,29 +167,27 @@ namespace Gamepad
             target = IntPtr.Zero;
             model.ResetText();
             OnKeyboardClosed();
-            engine.SetContext(game, paused, false);
+            engine.SetContext(NativeInputOnly, paused, false);
         }
         void ShowSwitchPrompt()
         {
-            if (!modeLocked)
+            if (!modeLocked && !multiplayerProtected)
                 Notify("松开切换 · " + (game ? "桌面键鼠" : "原生手柄"));
         }
         void ToggleGame()
         {
-            SetGame(!game, true);
+            if (modeLocked || multiplayerProtected)
+                return;
+            game = !game;
+            CloseKeyboard();
+            Notify("已切换 · " + (game ? "原生手柄" : "桌面键鼠"));
         }
         void ToggleModeLock()
         {
+            if (multiplayerProtected)
+                return;
             modeLocked = !modeLocked;
             Notify(modeLocked ? ModeName : ModeName + " · 已解锁");
-        }
-        void SetGame(bool value, bool manual = false)
-        {
-            if (modeLocked || game == value)
-                return;
-            game = value;
-            CloseKeyboard();
-            Notify(manual ? "已切换 · " + (game ? "原生手柄" : "桌面键鼠") : ModeName);
         }
         internal void Pause(bool value)
         {
@@ -212,9 +217,17 @@ namespace Gamepad
             {
             }
             firstRule = false;
-            bool? transition = policy.Enter(name, Config.GameApps);
-            if (transition.HasValue)
-                SetGame(transition.Value);
+            bool protect = ApplicationProfiles.Matches(name, Config.MultiplayerApps);
+            // Foreground protection is separate from the user's ordinary mode and lock.
+            bool? transition = protect ? null : policy.Enter(name, Config.GameApps);
+            bool nextGame = modeLocked ? game : transition.GetValueOrDefault(game);
+            if (protect != multiplayerProtected || nextGame != game)
+            {
+                multiplayerProtected = protect;
+                game = nextGame;
+                CloseKeyboard();
+                Notify(ModeName);
+            }
         }
         void Tick()
         {

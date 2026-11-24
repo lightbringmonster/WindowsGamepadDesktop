@@ -48,6 +48,13 @@ namespace Gamepad
                             Snap(settings, Path.Combine(directory, "mappings.png"));
                             CheckQuickBindings(settings, grid, directory, primary, host, provider, largePad, capture);
                         }
+                        if (section == "应用规则")
+                        {
+                            var lists = Descendants(settings).OfType<TextBox>().Select(list => list.AccessibleName);
+                            Check(lists.Contains("自动切换原生手柄") && lists.Contains("本地多人保护"),
+                                  "application rules show automatic and multiplayer protection separately");
+                            Snap(settings, Path.Combine(directory, "application-rules.png"));
+                        }
                     }
                     var model =
                         new KeyboardModel(() => new PinyinDictionary(Path.Combine(

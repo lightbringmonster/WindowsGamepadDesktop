@@ -60,6 +60,11 @@ namespace Gamepad
                 ExplorerChecks(args[1]);
                 return;
             }
+            if (args.Contains("--multiplayer"))
+            {
+                MultiplayerChecks();
+                return;
+            }
             if (args.Contains("--title-loop"))
             {
                 TitleLoopChecks();
@@ -105,7 +110,12 @@ namespace Gamepad
             }
             if (args.Contains("--fixture"))
             {
-                System.Windows.Forms.Application.Run(new Fixture());
+                using (var window = new Fixture())
+                {
+                    if (args.Length == 2)
+                        window.Text = args[1];
+                    System.Windows.Forms.Application.Run(window);
+                }
                 return;
             }
             if (args.Contains("--windows"))
@@ -137,6 +147,7 @@ namespace Gamepad
             foreach (var d in new XInputControllerProvider().Devices)
                 Console.WriteLine("PROBE " + d.Id + " " + d.Read().Connected);
             CheckProviderRefresh();
+            MultiplayerConfigChecks();
             More();
             FinalChecks();
             Console.WriteLine("Passed " + count + " checks");
