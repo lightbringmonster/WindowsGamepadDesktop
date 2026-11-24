@@ -1,0 +1,41 @@
+# 开发与构建
+
+版本 0.9.0，Windows 11 x64 便携版。发布目录同时包含产品源码、测试源码、离线数据和可执行文件。开发和测试使用 Dell G15 5520，Windows 11 Pro build 26300。
+
+## 从源码构建
+
+在项目目录运行以下命令，使用 Windows 自带的 .NET Framework 64 位 C# 编译器。默认输出到 bin，不会覆盖随包交付的 EXE。
+
+```powershell
+.\build.ps1 -Test
+.\bin\WindowsGamepadDesktop.exe --settings
+```
+
+运行时需要系统 .NET Framework 4.8 系列、UI Automation 及 XInput 1.4。开发机有多个现代 .NET 运行时，未安装 dotnet SDK；主要构建路径无需下载 SDK、NuGet 包或 npm 包。`build.ps1 -OutDir <目录>` 可指定独立输出。保留 exe 同级的 data 目录。编译选用 x64，包含 PerMonitorV2 清单，警告视为错误。
+
+启动参数包含 `--settings`、`--tray` 与 `--exit`。同一会话内重复普通启动会请求现有实例显示设置；--tray 重复启动会静默返回。--exit 通过消息窗口请求现有实例正常清理。
+
+## 技术选择
+
+参考源码检查固定于提交 `e428606bea52104ad0b8484e5170fbc06fdf0ded`。参考项目为 MIT 许可，使用 .NET Framework 4.8、WinForms、WebView2、System.Text.Json，设置前端为 React/Vite。Controller.cs 使用 Raw Input 并激活首个有操作的设备。KeyboardAssist.cs 有 UIA 检测与触摸键盘切换，Games.cs 有进程识别逻辑，InputEngine.cs 另有对全屏的处理。其拆分输入引擎和系统集成的思路有参考价值。此项目需要明确选定 XInput 主控、逐设备配置、可控的 B 确认键盘和按应用切换，因此选择独立实现。本版没有使用参考项目的源文件、图标或 UI 素材。[参考项目源码](https://github.com/DoobDewd/Desktop-Gamepad/tree/e428606bea52104ad0b8484e5170fbc06fdf0ded)
+
+Windows 11 有带手柄导航、X 删除和 Y 空格的原生触摸键盘。系统 InputPane 的主动显示为 best effort，并与应用视图、硬件键盘及系统策略相关。公开接口无法提供本项目要求的任意第三方窗口强制呼出、B 确认及选中格控制。选择非激活自绘键盘，普通文字走 Unicode SendInput，系统 IME 布局走虚拟键，离线中文布局另配可替换数据词典。本机检查过触摸键盘组件；未将原生布局跨应用兼容性视为已实机验证。[微软 Gamepad 布局说明](https://support.microsoft.com/en-us/servicing/os/windows-11/2025/03/march-25-2025-kb5053657-os-builds-22621-5126-and-22631-5126-preview) · [InputPane 接口](https://learn.microsoft.com/en-us/uwp/api/windows.ui.viewmanagement.inputpane)
+
+## 阶段记录
+
+| 阶段 | 构建和实际检查 |
+|---|---|
+| 1 基础框架 | 首次构建应用、测试程序，4 项检查通过。四槽初次读取均为未连接。后续采到北通 XInput 设备，Windows 总线属性为 BTP-KP20 XINPUT。 |
+| 2 桌面控制 | 13 项累计检查通过，覆盖组合键时序、拖拽引用、切换、断开释放、回中和配置读写。 |
+| 3 屏幕键盘 | 19 项累计检查通过，验证从格子导航到中英文提交，接入托盘主循环和真实 SendInput。 |
+| 4 焦点检测 | 23 项累计检查通过。随后以真实 Windows 窗口验证编辑、密码、只读、失焦和手动兜底。 |
+| 5 中文与显示 | 验证简体转换、词条候选、目标窗口收字、负坐标显示器与多种分辨率布局。回归中修复 Win32 字符串终止长度导致的偶发候选异常。 |
+| 6 系统集成 | 完成设置、主控和命名配置、登录启动开关、前台规则、紧急暂停；实际打开全部设置页并检查键盘渲染。 |
+| 7 发布验证 | 39 项核心检查通过，另有跨进程窗口、Windows 搜索、资源管理器、Edge 和 VS Code 测试。Windows 搜索冷注册导致首次点击超时的问题已修复，事件注册与快速采样分线程。便携包执行解压与启动检查。详情见 TESTING.md。 |
+| 8 飞智专项 | 仅交付能力模型、扩展接口、模拟轴验证与接入文档，等待实物和协议证据。 |
+
+参考仓库的文件位置清单由 DeepSeek Harness 只读提取，协调端复核了许可证、项目文件和具体实现。使用的 headless 配置声明模型 deepseek-flash，运行事件有思考输出，未提供具名思考强度等级。
+
+## 扩展与回归
+
+设备适配从 Controllers.cs 入手，平台输出只在 NativeInput.cs 实现。应先用模拟 Provider 重现映射问题，再在真实前台窗口测试 SendInput。UIA 查询必须保持在后台，并使用不包含文本内容的属性。不同交互式测试会争用前台、系统热键和鼠标，应按 TESTING.md 顺序执行。
