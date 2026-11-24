@@ -9,7 +9,7 @@
 | 模式与映射 | src/ApplicationProfiles.cs、src/MappingEngine.cs | 前台规则、手动覆盖、组合时序、触发器迟滞、回中、按键重复、曲线与位移累积 |
 | 系统输出 | src/NativeInput.cs | IInputSink、SendInput 结构体、已按下模拟键的登记和释放 |
 | 焦点 | src/FocusDetection.cs | UIA 焦点变化通知、按需检查、可编辑性、屏幕边界及防抖 |
-| 屏幕键盘 | src/Keyboard.cs | 模型导航、离线拼音、系统 IME 键码、非激活窗口、显示器与避让 |
+| 屏幕键盘 | src/Keyboard.cs、src/PinyinDictionary.cs | 模型导航、离线拼音分词和候选排序、系统 IME 键码、非激活窗口、显示器与避让 |
 | 系统集成 | src/Host.cs、src/SystemIntegration.cs | 消息循环、托盘、登录启动、系统热键、物理输入活动、会话锁定及短时浮层 |
 | 设置 | src/SettingsWindow.cs | 配置草稿、按能力生成网格、实时设备状态、导入导出 |
 | 入口 | src/Program.cs | 当前登录会话单实例、设置加载、正常退出及异常暂停 |
@@ -27,6 +27,8 @@
 有意义的手柄键鼠操作开启约 930 ms 的自动检测窗口，先等待约 85 ms，让目标完成焦点切换。只读取物理鼠标或键盘的 Raw Input 消息头以取消本次触发资格，不解析键码和内容。后台一个 MTA 线程读取 UIA，另一个单独注册焦点事件，避免系统注册延迟影响首次点击。只有触发窗口内或键盘可见时才主动查询焦点。
 
 检查启用、键盘焦点、ControlType、IsPassword、ValuePattern.IsReadOnly，以及 TextPattern 的只读属性。对宿主窗口检查所属进程或祖先 HWND。UIA 的 RuntimeId 用来识别同一窗口内换控件的情况。判定时不请求 Value、TextRange.GetText 或输入内容。字段失焦短暂抖动会延迟复核；前台窗口已变、设备断开及模式切换直接收起。
+
+离线拼音优先显示整词匹配，同时按音节或词条对未直接命中的读音分段。候选组合限制每个位置的路径数，避免长串拼音导致枚举膨胀。选分段候选时，只移除该候选消耗的拼音，余额留在键盘。
 
 屏幕键盘使用 WS_EX_NOACTIVATE、ShowWithoutActivation 和 WM_MOUSEACTIVATE。发送字符前核对前台仍是原目标，目标关闭或失去前台时停止输入。布局使用目标控件的物理屏幕边界及显示器工作区。对于高度超过半屏的编辑区，可能无法完全避让。无法可靠分类的目标仍可手动输入。
 

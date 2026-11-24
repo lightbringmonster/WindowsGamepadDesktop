@@ -47,7 +47,7 @@ namespace Gamepad
             }
             if (m.Msg == 0x8011)
             {
-                m.Result = (IntPtr)(edit.Text == ("q你好") ? 2 : edit.Text == "q" ? 1 : 0);
+                m.Result = (IntPtr)(edit.Text == "q你好世界" ? 2 : edit.Text == "q" ? 1 : 0);
                 return;
             }
             if (m.Msg == 0x8012)
@@ -243,7 +243,7 @@ namespace Gamepad
                         mirror.Command("Right");
                     mirror.Command("Select");
                     Check(mirror.Composition == "n", "navigation sequence begins N");
-                    foreach (char ch in "ihao")
+                    foreach (char ch in "ihaoshijie")
                     {
                         int row = mirror.Rows.FindIndex(a => a.Contains(ch.ToString()));
                         while (mirror.Row != row)
@@ -262,7 +262,7 @@ namespace Gamepad
                     }
                     Hit(pad, "Y");
                     Check(SendMessage(w, 0x8011, IntPtr.Zero, IntPtr.Zero).ToInt32() == 2,
-                          "offline Chinese candidate reaches original edit");
+                          "continuous Chinese sentence reaches original edit in one commit");
                     Hit(pad, "A");
                     Await(() => !Shown(), "return closes visible keyboard", 1000);
                     Hit(pad, "A");

@@ -43,18 +43,17 @@ namespace Gamepad
                                                                                                  Close = () =>
                                                                                                  {} };
                     model.Open("拼音");
-                    foreach (char c in "nihao")
-                    {
-                        model.Row = model.Rows.FindIndex(r => r.Contains(c.ToString()));
-                        model.Col = Array.IndexOf(model.Rows[model.Row], c.ToString());
-                        model.Command("Select");
-                    }
+                    TypeReading(model, "nihaohuanyingshiyong");
                     model.Row = model.Col = 0;
                     using (var window = new KeyboardWindow(model))
                     {
                         window.Present(settings.Handle, Rectangle.Empty, cfg);
                         Pump(80);
                         Snap(window, Path.Combine(directory, "keyboard.png"));
+                        model.Open("English");
+                        window.Invalidate();
+                        Pump(60);
+                        Snap(window, Path.Combine(directory, "keyboard-english.png"));
                         window.Hide();
                     }
                 }
