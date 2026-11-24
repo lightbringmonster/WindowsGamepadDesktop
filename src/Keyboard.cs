@@ -2,73 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Windows.Forms;
 namespace Gamepad
 {
-    internal sealed class PinyinDictionary
-    {
-        readonly Dictionary<string, List<string>> entries =
-            new Dictionary<string, List<string>>(StringComparer.Ordinal);
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-        static extern int LCMapStringEx(string locale, uint flags, string text, int length, StringBuilder result,
-                                        int size, IntPtr version, IntPtr reserved, IntPtr sort);
-        internal static string Simplify(string s)
-        {
-            var b = new StringBuilder(s.Length * 2 + 2);
-            return LCMapStringEx("zh-CN", 0x02000000, s, -1, b, b.Capacity, IntPtr.Zero, IntPtr.Zero,
-                                 IntPtr.Zero) > 0
-                       ? b.ToString()
-                       : s;
-        }
-        static readonly Encoding gb =
-            Encoding.GetEncoding(936, new EncoderReplacementFallback("?"), new DecoderReplacementFallback("?"));
-        static int Rank(string value)
-        {
-            var b = gb.GetBytes(value);
-            return b.Length == 2 && b[0] >= 0xb0 && b[0] <= 0xd7 ? 0 : 1;
-        }
-        internal PinyinDictionary(string data)
-        {
-            foreach (string line in File.ReadLines(Path.Combine(data, "common.tsv"), Encoding.UTF8))
-            {
-                var a = line.Split('\t');
-                if (a.Length == 2)
-                    entries[a[0]] = a[1].Split(' ').ToList();
-            }
-            bool started = false;
-            foreach (string line in File.ReadLines(Path.Combine(data, "luna_pinyin.dict.yaml"), Encoding.UTF8))
-            {
-                if (!started)
-                {
-                    started = line == "...";
-                    continue;
-                }
-                var a = line.Split('\t');
-                if (a.Length < 2 || a[1].Length == 0)
-                    continue;
-                string key = a[1].Replace(" ", "").Replace("ü", "v");
-                List<string> list;
-                if (!entries.TryGetValue(key, out list))
-                    entries[key] = list = new List<string>();
-                list.Add(a[0]);
-            }
-        }
-        public List<string> Find(string code)
-        {
-            List<string> matches;
-            if (!entries.TryGetValue(code, out matches))
-                return new List<string>();
-            var candidates = matches.Select(Simplify).Distinct().ToList();
-            // Keep curated words and common characters ahead of rare Unicode ideographs.
-            return candidates.Take(1)
-                .Concat(candidates.Skip(1).OrderBy(s => s.Length == 1 ? Rank(s) : 0))
-                .ToList();
-        }
-    }
     internal sealed class KeyboardModel
     {
         internal static readonly string[] Layouts = { "English", "拼音", "数字符号", "系统 IME", "编辑" };
@@ -84,7 +21,31 @@ namespace Gamepad
         public int Layout, Row, Col, Page;
         public bool Upper;
         public string Composition = "";
-        public List<string> Candidates = new List<string>();
+        const int CandidatesPerPage = 5;
+        public List<PinyinCandidate> Candidates = new List<PinyinCandidate>();
+        public int CandidatePages
+        {
+            get {
+                return Math.Max(1, (Candidates.Count + CandidatesPerPage - 1) / CandidatesPerPage);
+            }
+        }
+        public bool HasComposition
+        {
+            get {
+                return Layout == 1 && Composition.Length > 0;
+            }
+        }
+        public string PreviewCandidate
+        {
+            get {
+                if (!HasComposition || Candidates.Count == 0)
+                    return "";
+                int first = Page * CandidatesPerPage;
+                int selected =
+                    Row == 0 && Col < Math.Min(CandidatesPerPage, Candidates.Count - first) ? first + Col : first;
+                return CandidateLabel(Candidates[selected]);
+            }
+        }
         public List<string[]> Rows = new List<string[]>();
         public KeyboardModel(Func<PinyinDictionary> getDictionary)
         {
@@ -106,20 +67,31 @@ namespace Gamepad
         }
         void Query()
         {
-            Candidates = Composition.Length == 0 ? new List<string>() : dictionary().Find(Composition);
+            Candidates = dictionary().Find(Composition);
             Page = 0;
         }
         public void Build()
         {
             Rows.Clear();
-            if (Layout == 1 && Composition.Length > 0)
-                Rows.Add(Candidates.Skip(Page * 5).Take(5).Concat(new[] { "‹", "›" }).ToArray());
+            if (HasComposition)
+            {
+                var labels = Candidates.Skip(Page * CandidatesPerPage)
+                                 .Take(CandidatesPerPage)
+                                 .Select(CandidateLabel)
+                                 .ToList();
+                if (labels.Count == 0)
+                    labels.Add("继续输入拼音");
+                if (CandidatePages > 1)
+                    labels.AddRange(new[] { "‹", "›" });
+                Rows.Add(labels.ToArray());
+            }
             if (Layout == 3)
                 Rows.Add("1 2 3 4 5 6 7 8 9 0".Split(' '));
             foreach (var r in Layout == 4 ? Edit : Layout == 2 ? Symbols : Letters)
                 Rows.Add((Layout == 0 && Upper ? r.ToUpperInvariant() : r).Split(' '));
             Rows.Add((Layout == 0   ? "大小写 空格 退格 完成"
                       : Layout == 3 ? "上页 下页 空格 退格 切换输入法 完成"
+                      : Layout == 1 ? "隔音符 空格 退格 完成"
                                     : "空格 退格 完成")
                          .Split(' '));
             Row = Math.Max(0, Math.Min(Row, Rows.Count - 1));
@@ -157,9 +129,13 @@ namespace Gamepad
                 Activate("完成");
                 break;
             case "Select":
-                if (Layout == 1 && Composition.Length > 0 && Row == 0 && Col < Rows[0].Length - 2)
+                if (HasComposition && Row == 0)
                 {
-                    Commit(Rows[0][Col]);
+                    int first = Page * CandidatesPerPage;
+                    if (Col < Math.Min(CandidatesPerPage, Candidates.Count - first))
+                        Commit(Candidates[first + Col]);
+                    else if (CandidatePages > 1)
+                        Activate(Rows[0][Col]);
                     break;
                 }
                 Activate(Rows[Row][Col]);
@@ -167,11 +143,27 @@ namespace Gamepad
             }
             Build();
         }
-        void Commit(string value)
+        string CandidateLabel(PinyinCandidate candidate)
         {
-            Insert(value);
-            ResetText();
+            return candidate.Text + (candidate.Consumed < Composition.Length ? " →" : "");
+        }
+        bool Commit(PinyinCandidate candidate)
+        {
+            Insert(candidate.Text);
+            Composition = Composition.Substring(candidate.Consumed);
+            Query();
             Row = Col = 0;
+            return Composition.Length == 0;
+        }
+        void AppendReading(char letter)
+        {
+            if (Composition.Length >= 64)
+                return;
+            bool addedRow = Composition.Length == 0;
+            Composition += letter;
+            Query();
+            if (addedRow)
+                Row++;
         }
         static readonly Dictionary<string, string> Commands =
             new Dictionary<string, string> { { "←", "Left" },
@@ -196,19 +188,16 @@ namespace Gamepad
         {
             if (value == "‹" || value == "›")
             {
-                int pages = Math.Max(1, (Candidates.Count + 4) / 5);
+                int pages = CandidatePages;
                 Page = (Page + (value == "›" ? 1 : pages - 1)) % pages;
+                Col = Math.Min(CandidatesPerPage, Candidates.Count - Page * CandidatesPerPage) +
+                      (value == "›" ? 1 : 0);
                 return;
             }
             if (value == "完成")
             {
-                if (Composition.Length > 0)
-                {
-                    if (Candidates.Count > 0)
-                        Commit(Candidates[Page * 5]);
-                    else
-                        return;
-                }
+                if (HasComposition && (Candidates.Count == 0 || !Commit(Candidates[Page * CandidatesPerPage])))
+                    return;
                 Key("Enter");
                 Close();
                 return;
@@ -229,10 +218,16 @@ namespace Gamepad
                 if (Composition.Length > 0)
                 {
                     if (Candidates.Count > 0)
-                        Commit(Candidates[Page * 5]);
+                        Commit(Candidates[Page * CandidatesPerPage]);
                 }
                 else
                     Key("Space");
+                return;
+            }
+            if (value == "隔音符")
+            {
+                if (HasComposition && !Composition.EndsWith("'", StringComparison.Ordinal))
+                    AppendReading('\'');
                 return;
             }
             if (value == "大小写")
@@ -253,12 +248,7 @@ namespace Gamepad
             }
             if (Layout == 1 && value.Length == 1 && value[0] >= 'a' && value[0] <= 'z')
             {
-                bool addedRow = Composition.Length == 0;
-                if (Composition.Length < 40)
-                    Composition += value;
-                Query();
-                if (addedRow)
-                    Row++;
+                AppendReading(value[0]);
                 return;
             }
             if (Layout == 3)
@@ -290,8 +280,11 @@ namespace Gamepad
             return String.Join("      ", parts);
         }
         readonly KeyboardModel model;
-        static readonly Color Base = Color.FromArgb(19, 26, 37), Tile = Color.FromArgb(47, 60, 76),
-                              Ink = Color.FromArgb(240, 246, 249), Accent = Color.FromArgb(137, 237, 205);
+        static readonly Color PanelTop = Color.FromArgb(46, 47, 55), PanelBottom = Color.FromArgb(32, 33, 40),
+                              Border = Color.FromArgb(83, 85, 100), KeyTop = Color.FromArgb(67, 68, 78),
+                              KeyBottom = Color.FromArgb(56, 57, 67), Utility = Color.FromArgb(49, 51, 61),
+                              Ink = Color.FromArgb(244, 244, 248), Muted = Color.FromArgb(183, 185, 201),
+                              Accent = Color.FromArgb(156, 188, 255), AccentInk = Color.FromArgb(26, 39, 68);
         readonly List<KeyValuePair<Rectangle, int[]>> hits = new List<KeyValuePair<Rectangle, int[]>>();
         internal KeyboardWindow(KeyboardModel m)
         {
@@ -300,7 +293,7 @@ namespace Gamepad
             ShowInTaskbar = false;
             TopMost = true;
             DoubleBuffered = true;
-            BackColor = Base;
+            BackColor = PanelBottom;
             Opacity = .97;
             AutoScaleMode = AutoScaleMode.None;
             StartPosition = FormStartPosition.Manual;
@@ -363,42 +356,150 @@ namespace Gamepad
                 FormatFlags = StringFormatFlags.NoWrap
             }) g.DrawString(text, font, brush, area, format);
         }
+        static GraphicsPath Rounded(Rectangle area, int radius)
+        {
+            int diameter = Math.Min(radius * 2, Math.Min(area.Width, area.Height));
+            var path = new GraphicsPath();
+            if (diameter <= 1)
+            {
+                path.AddRectangle(area);
+                return path;
+            }
+            path.AddArc(area.Left, area.Top, diameter, diameter, 180, 90);
+            path.AddArc(area.Right - diameter, area.Top, diameter, diameter, 270, 90);
+            path.AddArc(area.Right - diameter, area.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(area.Left, area.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        int PanelRadius
+        {
+            get {
+                return Math.Max(14, Math.Min(32, ClientSize.Height / 16));
+            }
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            if (ClientSize.Width < 2 || ClientSize.Height < 2)
+                return;
+            using (var outline = Rounded(ClientRectangle, PanelRadius)) Region = new Region(outline);
+        }
+
+        static float KeyWeight(string text)
+        {
+            if (text == "‹" || text == "›")
+                return .37f;
+            if (text == "空格")
+                return 2.2f;
+            if (text == "完成" || text == "大小写" || text == "退格" || text == "隔音符")
+                return 1.2f;
+            return 1f;
+        }
+
+        void DrawHeader(Graphics g, Rectangle area)
+        {
+            float size = Math.Min(area.Height * .45f, area.Width / 16f);
+            if (!model.HasComposition)
+            {
+                Label(g, "手柄键盘", new Rectangle(area.Left, area.Top, area.Width * 2 / 3, area.Height), size,
+                      Ink, true, false);
+                Label(g, KeyboardModel.Layouts[model.Layout],
+                      new Rectangle(area.Right - area.Width / 4, area.Top, area.Width / 4, area.Height),
+                      size * .78f, Muted, false, true);
+                return;
+            }
+            var preview = model.PreviewCandidate;
+            string reading = model.Composition.Length > 38
+                                 ? "…" + model.Composition.Substring(model.Composition.Length - 37)
+                                 : model.Composition;
+            int split = area.Width * 44 / 100;
+            var readingBounds = new Rectangle(area.Left, area.Top, split - 8, area.Height);
+            Label(g, reading, readingBounds,
+                  Math.Min(size * .86f, readingBounds.Width / Math.Max(11f, reading.Length * .60f)), Muted, false,
+                  false);
+            var previewBounds =
+                new Rectangle(area.Left + split + 12, area.Top, area.Width * 45 / 100 - 14, area.Height);
+            Label(g, preview.Length > 0 ? preview : "继续输入拼音", previewBounds, size, Ink, true, false);
+            if (model.CandidatePages > 1)
+                Label(g, (model.Page + 1) + " / " + model.CandidatePages,
+                      new Rectangle(area.Right - area.Width / 11, area.Top, area.Width / 11, area.Height),
+                      size * .64f, Muted, false, true);
+        }
+
+        void DrawKey(Graphics g, string label, Rectangle box, bool selected, bool utility, bool candidate)
+        {
+            int radius = Math.Max(5, Math.Min(14, box.Height / 7));
+            using (var shape = Rounded(box, radius))
+            {
+                if (selected || utility || candidate)
+                {
+                    using (var fill = new SolidBrush(selected ? Accent : Utility)) g.FillPath(fill, shape);
+                }
+                else
+                {
+                    using (var fill = new LinearGradientBrush(box, KeyTop, KeyBottom, 90f))
+                        g.FillPath(fill, shape);
+                }
+                using (var edge = new Pen(selected ? Color.FromArgb(218, 230, 255) : Border, selected ? 2f : 1f))
+                    g.DrawPath(edge, shape);
+            }
+            var textBox = Rectangle.Inflate(box, -Math.Min(8, box.Width / 6), 0);
+            float targetSize = box.Height * (utility ? .36f : .50f);
+            float fit = textBox.Width / Math.Max(1.4f, label.Length + .4f);
+            Label(g, label, textBox, Math.Max(10, Math.Min(targetSize, fit)), selected ? AccentInk : Ink, selected,
+                  true);
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
-            g.Clear(Base);
+            int width = ClientSize.Width, height = ClientSize.Height;
+            if (width < 2 || height < 2 || model.Rows.Count == 0)
+                return;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-            int w = ClientSize.Width, h = ClientSize.Height, pad = Math.Max(8, w / 50), head = h / 7, foot = h / 9;
-            Label(g,
-                  model.Composition.Length > 0
-                      ? "拼音  /  " + model.Composition + "     " +
-                            (model.Candidates.Count == 0
-                                 ? "暂无候选"
-                                 : (model.Page + 1) + " / " + ((model.Candidates.Count + 4) / 5))
-                      : "手柄键盘   /   " + KeyboardModel.Layouts[model.Layout],
-                  new Rectangle(pad, 0, w - pad * 2, head), head * .47f, Ink, true, false);
-            int area = h - head - foot, n = model.Rows.Count;
+            using (var panel = new LinearGradientBrush(ClientRectangle, PanelTop, PanelBottom, 90f))
+                g.FillRectangle(panel, ClientRectangle);
+            using (var outline = Rounded(Rectangle.Inflate(ClientRectangle, -1, -1), PanelRadius)) using (
+                var edge = new Pen(Border)) g.DrawPath(edge, outline);
+
+            int padding = Math.Max(16, width / 40), header = height * 17 / 100, footer = height * 11 / 100;
+            int contentWidth = width - padding * 2;
+            DrawHeader(g, new Rectangle(padding, 0, contentWidth, header));
+            using (var divider = new Pen(Border))
+                g.DrawLine(divider, padding, header - 3, width - padding, header - 3);
+            int area = height - header - footer - 8, rowCount = model.Rows.Count;
+            int gap = Math.Max(4, width / 240);
             hits.Clear();
-            int gap = Math.Max(3, w / 320);
-            for (int r = 0; r < n; r++)
+
+            for (int r = 0; r < rowCount; r++)
             {
                 var row = model.Rows[r];
-                int y = head + area * r / n;
+                bool candidate = model.HasComposition && r == 0;
+                bool utility = r == rowCount - 1;
+                int indent = !candidate && !utility && row.Length < 10 ? (10 - row.Length) * contentWidth / 44 : 0;
+                int rowLeft = padding + indent, rowWidth = contentWidth - indent * 2;
+                float totalWeight = row.Sum(label => KeyWeight(label));
+                float leftWeight = 0;
+                int top = header + 8 + area * r / rowCount;
+                int keyHeight = area * (r + 1) / rowCount - area * r / rowCount - gap;
                 for (int c = 0; c < row.Length; c++)
                 {
-                    int x = pad + (w - 2 * pad) * c / row.Length, end = pad + (w - 2 * pad) * (c + 1) / row.Length;
-                    var box = new Rectangle(x, y, end - x - gap, area * (r + 1) / n - area * r / n - gap);
-                    bool sel = r == model.Row && c == model.Col;
-                    using (var brush = new SolidBrush(sel ? Accent : Tile)) g.FillRectangle(brush, box);
-                    Label(g, row[c], box,
-                          Math.Max(10,
-                                   Math.Min(box.Height * .52f, box.Width / (float)Math.Max(2, row[c].Length + 1))),
-                          sel ? Base : Ink, sel, true);
+                    string label = row[c];
+                    int x = rowLeft + (int)(rowWidth * leftWeight / totalWeight);
+                    leftWeight += KeyWeight(label);
+                    int right = rowLeft + (int)Math.Round(rowWidth * leftWeight / totalWeight);
+                    var box = new Rectangle(x, top, right - x - gap, keyHeight);
+                    DrawKey(g, label, box, r == model.Row && c == model.Col, utility, candidate);
                     hits.Add(new KeyValuePair<Rectangle, int[]>(box, new[] { r, c }));
                 }
             }
-            Label(g, Legend, new Rectangle(pad, h - foot, w - 2 * pad, foot), Math.Min(foot * .43f, w / 62f),
-                  Accent, false, false);
+            string legend = model.Layout == 1 ? Legend.Replace("  空格", "  首选 / 空格") : Legend;
+            Label(g, legend, new Rectangle(padding, height - footer, contentWidth, footer),
+                  Math.Min(footer * .43f, contentWidth / 74f), Muted, false, false);
         }
         protected override void OnMouseDown(MouseEventArgs e)
         {
