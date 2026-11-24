@@ -20,6 +20,10 @@ namespace Gamepad
                     settings.Show();
                     Pump(160);
                     Check(settings.Visible, "settings window opens");
+                    var startup = Descendants(settings).OfType<ComboBox>()
+                                                     .Single(combo => combo.AccessibleName == "启动模式");
+                    Check(startup.SelectedItem as string == "桌面键鼠" && startup.Items.Count == 3,
+                          "startup settings show desktop as the default among three options");
                     Snap(settings, Path.Combine(directory, "devices.png"));
                     foreach (string section in new[] { "按键映射", "虚拟键盘", "应用规则", "设备" })
                     {

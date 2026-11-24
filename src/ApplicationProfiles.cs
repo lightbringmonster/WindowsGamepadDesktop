@@ -5,7 +5,8 @@ namespace Gamepad
     // A manual choice lasts until the matching foreground rule changes.
     internal sealed class ApplicationProfiles
     {
-        string current;
+        // Until a rule matches, keep the mode chosen at startup.
+        string current = "";
         public bool? Enter(string processName, string[] gameApps)
         {
             string next =

@@ -59,6 +59,11 @@ namespace Gamepad
                 ExplorerChecks(args[1]);
                 return;
             }
+            if (args.Contains("--startup-mode"))
+            {
+                StartupModeChecks();
+                return;
+            }
             if (args.Contains("--title-loop"))
             {
                 TitleLoopChecks();
