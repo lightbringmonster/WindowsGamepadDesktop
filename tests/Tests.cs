@@ -13,10 +13,11 @@ namespace Gamepad
                 return Id;
             }
         }
+        public ControllerCapabilities DeviceCapabilities;
         public ControllerCapabilities Capabilities
         {
             get {
-                return new ControllerCapabilities { Controls = XInputDevice.Standard };
+                return DeviceCapabilities ?? new ControllerCapabilities { Controls = XInputDevice.Standard };
             }
         }
         public ControllerState State = new ControllerState();

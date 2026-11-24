@@ -25,6 +25,21 @@ namespace Gamepad
     public sealed class ControllerCapabilities
     {
         public string[] Controls;
+        public Dictionary<string,string> Labels;
+        internal string DisplayLabel(string id)
+        {
+            string label;
+            if (Labels != null && Labels.TryGetValue(id, out label))
+                return label;
+            switch (id)
+            {
+            case "Up": return "↑ Up";
+            case "Down": return "↓ Down";
+            case "Left": return "← Left";
+            case "Right": return "→ Right";
+            default: return id;
+            }
+        }
         public bool HasGyroscope, HasAccelerometer, HasBattery;
     }
     public interface IControllerDevice
