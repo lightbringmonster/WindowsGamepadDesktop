@@ -86,7 +86,7 @@ Windows 的权限隔离、UAC 安全桌面和锁屏会限制输入，普通权�
 
 ## 贡献者
 
-- **Codex** · 实现与测试
+- [**Codex**](https://github.com/codex) · 实现与测试
 
 ## 开源许可
 
