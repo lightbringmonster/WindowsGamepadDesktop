@@ -31,6 +31,8 @@ namespace Gamepad
         [DllImport("user32.dll")]
         internal static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")]
+        internal static extern IntPtr WindowFromPoint(System.Drawing.Point point);
+        [DllImport("user32.dll")]
         internal static extern bool IsWindow(IntPtr hwnd);
         [DllImport("user32.dll")]
         internal static extern uint GetWindowThreadProcessId(IntPtr hwnd, out int pid);
@@ -131,6 +133,7 @@ namespace Gamepad
     {
         readonly IInputSink sink;
         readonly List<int> held = new List<int>();
+        internal Action<bool> LeftButtonChanged;
         public InputLedger(IInputSink output)
         {
             sink = output;
@@ -141,12 +144,32 @@ namespace Gamepad
         }
         public void Sync(List<int> wanted)
         {
+            Sync(wanted, true);
+        }
+        void Sync(List<int> wanted, bool reportClicks)
+        {
             for (int i = held.Count - 1; i >= 0; i--)
-                if (!wanted.Contains(held[i]) && Send(held[i], false))
+            {
+                int token = held[i];
+                if (!wanted.Contains(token) && Send(token, false))
+                {
                     held.RemoveAt(i);
-            foreach (int t in wanted)
-                if (!held.Contains(t) && Send(t, true))
-                    held.Add(t);
+                    ReportLeftButton(token, false, reportClicks);
+                }
+            }
+            foreach (int token in wanted)
+            {
+                if (!held.Contains(token) && Send(token, true))
+                {
+                    held.Add(token);
+                    ReportLeftButton(token, true, reportClicks);
+                }
+            }
+        }
+        void ReportLeftButton(int token, bool down, bool reportClicks)
+        {
+            if (token == -1 && reportClicks && LeftButtonChanged != null)
+                LeftButtonChanged(down);
         }
         public void Tap(int[] keys)
         {
@@ -165,7 +188,7 @@ namespace Gamepad
         }
         public void Release()
         {
-            Sync(new List<int>());
+            Sync(new List<int>(), false);
         }
     }
 }

@@ -5,6 +5,7 @@ namespace Gamepad
     internal enum ModeGestureAction
     {
         None,
+        ReadyToSwitch,
         SwitchMode,
         ToggleLock
     }
@@ -15,14 +16,14 @@ namespace Gamepad
         const int LockMilliseconds = 3000;
         string binding;
         string first, second;
-        bool armed, suppress;
+        bool armed, suppress, switchPromptShown;
         long started = -1;
 
         public bool SuppressSingles { get; private set; }
 
         public void Reset()
         {
-            armed = suppress = SuppressSingles = false;
+            armed = suppress = SuppressSingles = switchPromptShown = false;
             started = -1;
         }
 
@@ -51,6 +52,7 @@ namespace Gamepad
             if (a && b && !suppress)
             {
                 suppress = true;
+                switchPromptShown = false;
                 started = now;
             }
 
@@ -69,6 +71,11 @@ namespace Gamepad
                     if (held >= SwitchMilliseconds)
                         action = ModeGestureAction.SwitchMode;
                     started = -1;
+                }
+                else if (held >= SwitchMilliseconds && !switchPromptShown)
+                {
+                    switchPromptShown = true;
+                    action = ModeGestureAction.ReadyToSwitch;
                 }
             }
             if (!a && !b)

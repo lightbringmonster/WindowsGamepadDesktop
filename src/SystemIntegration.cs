@@ -199,6 +199,7 @@ namespace Gamepad
         public void Present(string text)
         {
             label = text;
+            Text = text;
             var r = Screen.FromHandle(Win.GetForegroundWindow()).WorkingArea;
             int w = Math.Max(220, r.Width / 5), h = Math.Max(50, r.Height / 14);
             Bounds = new Rectangle(r.Left + (r.Width - w) / 2, r.Top + h / 3, w, h);
@@ -246,7 +247,7 @@ namespace Gamepad
         partial void InitializeSystem()
         {
             toast = new ModeToast();
-            messages = new MessageSink(() => Pause(true), PhysicalActivity,
+            messages = new MessageSink(() => Pause(true), CancelFocusRequest,
                                        locked =>
                                        {
                                            systemBlocked = locked;

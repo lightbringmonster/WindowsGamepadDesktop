@@ -16,8 +16,10 @@ namespace Gamepad
             Check(gesture.Sample(binding, released, 2009) == ModeGestureAction.None && gesture.SuppressSingles,
                   "release at 1999 ms cancels chord and suppresses both individual actions");
             gesture.Sample(binding, both, 3000);
-            Check(gesture.Sample(binding, both, 5000) == ModeGestureAction.None,
-                  "chord never switches while still held at two seconds");
+            Check(gesture.Sample(binding, both, 4999) == ModeGestureAction.None &&
+                  gesture.Sample(binding, both, 5000) == ModeGestureAction.ReadyToSwitch &&
+                  gesture.Sample(binding, both, 5001) == ModeGestureAction.None,
+                  "hold emits one ready prompt at two seconds without switching");
             Check(gesture.Sample(binding, one, 5000) == ModeGestureAction.SwitchMode,
                   "release of either shoulder at 2000 ms switches once");
             gesture.Sample(binding, both, 5050);
@@ -25,7 +27,7 @@ namespace Gamepad
                   "repressing one shoulder cannot start a new chord until both release");
             gesture.Sample(binding, released, 8180);
             gesture.Sample(binding, both, 9000);
-            Check(gesture.Sample(binding, both, 11999) == ModeGestureAction.None &&
+            Check(gesture.Sample(binding, both, 11999) == ModeGestureAction.ReadyToSwitch &&
                       gesture.Sample(binding, both, 12000) == ModeGestureAction.ToggleLock,
                   "three-second hold toggles the lock without requesting a switch");
             Check(gesture.Sample(binding, both, 18000) == ModeGestureAction.None &&

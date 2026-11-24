@@ -32,9 +32,11 @@ namespace Gamepad
             manager = new DeviceManager(provider);
             engine = new MappingEngine(sink);
             engine.ToggleMode = ToggleGame;
+            engine.ModeSwitchReady = ShowSwitchPrompt;
             engine.ToggleModeLock = ToggleModeLock;
             engine.ToggleKeyboard = ToggleKeyboard;
-            engine.Interaction = () => OnInteraction();
+            engine.MappedAction = OnMappedAction;
+            engine.Ledger.LeftButtonChanged = OnPrimaryButton;
             engine.KeyboardCommand = Command;
             var dict = new Lazy<PinyinDictionary>(
                 () => new PinyinDictionary(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data")));
@@ -159,22 +161,27 @@ namespace Gamepad
             OnKeyboardClosed();
             engine.SetContext(game, paused, false);
         }
+        void ShowSwitchPrompt()
+        {
+            if (!modeLocked)
+                Notify("松开切换 · " + (game ? "桌面键鼠" : "原生手柄"));
+        }
         void ToggleGame()
         {
-            SetGame(!game);
+            SetGame(!game, true);
         }
         void ToggleModeLock()
         {
             modeLocked = !modeLocked;
             Notify(modeLocked ? ModeName : ModeName + " · 已解锁");
         }
-        void SetGame(bool value)
+        void SetGame(bool value, bool manual = false)
         {
             if (modeLocked || game == value)
                 return;
             game = value;
             CloseKeyboard();
-            Notify(ModeName);
+            Notify(manual ? "已切换 · " + (game ? "原生手柄" : "桌面键鼠") : ModeName);
         }
         internal void Pause(bool value)
         {
@@ -263,7 +270,6 @@ namespace Gamepad
         partial void BuildExtraMenu(ContextMenuStrip m);
         partial void ShowSettings();
         partial void CheckFocus(long now);
-        partial void OnInteraction();
         partial void OnKeyboardClosed();
         protected override void ExitThreadCore()
         {

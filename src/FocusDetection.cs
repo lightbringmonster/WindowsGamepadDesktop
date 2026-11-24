@@ -3,11 +3,13 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Automation;
+using System.Windows.Forms;
 namespace Gamepad
 {
     internal sealed class FocusInfo
     {
         internal IntPtr Window;
+        internal int Generation;
         internal string Id;
         internal bool Editable, Password;
         internal Rectangle Bounds;
@@ -20,7 +22,7 @@ namespace Gamepad
         readonly Thread worker;
         volatile bool quit;
         FocusInfo latest;
-        int dirty;
+        int dirty, requestedGeneration;
         public FocusDetection()
         {
             worker = new Thread(Run) { Name = "Editable focus", IsBackground = true };
@@ -40,12 +42,15 @@ namespace Gamepad
         {
             return Interlocked.Exchange(ref latest, null);
         }
-        public void Request()
+        public void Request(int generation)
         {
             lock (lifetime)
             {
                 if (!quit)
+                {
+                    Volatile.Write(ref requestedGeneration, generation);
                     wake.Set();
+                }
             }
         }
         void Changed(object sender, AutomationFocusChangedEventArgs args)
@@ -91,14 +96,18 @@ namespace Gamepad
                     wake.WaitOne();
                     if (quit)
                         break;
+                    int generation = Volatile.Read(ref requestedGeneration);
+                    FocusInfo result;
                     try
                     {
-                        Interlocked.Exchange(ref latest, Inspect());
+                        result = Inspect();
                     }
                     catch (Exception)
                     {
-                        Interlocked.Exchange(ref latest, new FocusInfo());
+                        result = new FocusInfo();
                     }
+                    result.Generation = generation;
+                    Interlocked.Exchange(ref latest, result);
                 }
             }
             finally
@@ -183,35 +192,105 @@ namespace Gamepad
         long eligibleUntil, requestAfter, sampleAt, badSince = -1, lastGood;
         string focusedId;
         bool activatedByFocus;
-        partial void OnInteraction()
+        Point? pressPoint, requestedPoint;
+        IntPtr pressWindow, requestedWindow;
+        int focusGeneration;
+
+        bool CanRequestKeyboard
         {
-            if (!Config.AutoKeyboard || keyboard.Visible || game || paused)
+            get {
+                return Config.AutoKeyboard && !keyboard.Visible && !game && !paused && !systemBlocked;
+            }
+        }
+
+        void OnPrimaryButton(bool down)
+        {
+            if (down)
+            {
+                CancelFocusRequest();
+                if (!CanRequestKeyboard)
+                    return;
+                var point = Cursor.Position;
+                var window = Win.GetAncestor(Win.WindowFromPoint(point), 2); // GA_ROOT
+                if (window != IntPtr.Zero)
+                {
+                    pressWindow = window;
+                    pressPoint = point;
+                }
+                return;
+            }
+
+            var click = pressPoint;
+            pressPoint = null;
+            if (CanRequestKeyboard && click.HasValue && WithinClickRange(click.Value))
+                RequestKeyboard(pressWindow, click);
+        }
+
+        static bool WithinClickRange(Point start)
+        {
+            var current = Cursor.Position;
+            var range = SystemInformation.DragSize;
+            return Math.Abs(current.X - start.X) <= range.Width / 2 &&
+                   Math.Abs(current.Y - start.Y) <= range.Height / 2;
+        }
+
+        internal static bool IsFocusNavigation(int[] keys)
+        {
+            int key = keys[keys.Length - 1];
+            if (keys.Length == 1)
+                return key == (int)Keys.Tab;
+            if (keys.Length != 2)
+                return false;
+            if (keys[0] == (int)Keys.ShiftKey || keys[0] == (int)Keys.LShiftKey || keys[0] == (int)Keys.RShiftKey)
+                return key == (int)Keys.Tab;
+            return (keys[0] == (int)Keys.ControlKey || keys[0] == (int)Keys.LControlKey ||
+                    keys[0] == (int)Keys.RControlKey) &&
+                   (key == (int)Keys.L || key == (int)Keys.F);
+        }
+
+        void OnMappedAction(int[] keys)
+        {
+            if (keys[0] == -1)
+                return; // The ledger reports the completed left click separately.
+            CancelFocusRequest();
+            if (CanRequestKeyboard && IsFocusNavigation(keys))
+                RequestKeyboard(Win.GetForegroundWindow(), null);
+        }
+
+        void RequestKeyboard(IntPtr window, Point? point)
+        {
+            if (window == IntPtr.Zero)
                 return;
             long now = clock.ElapsedMilliseconds;
+            requestedWindow = window;
+            requestedPoint = point;
             eligibleUntil = now + 930;
             requestAfter = now + 85;
             sampleAt = requestAfter;
-            if (focus != null)
-                focus.Take();
+            focusGeneration++;
         }
-        internal void PhysicalActivity()
+
+        internal void CancelFocusRequest()
         {
+            pressPoint = null;
             eligibleUntil = 0;
         }
+
         partial void OnKeyboardClosed()
         {
-            eligibleUntil = 0;
+            CancelFocusRequest();
+            focusGeneration++;
             focusedId = null;
             activatedByFocus = false;
             badSince = -1;
             lastGood = clock.ElapsedMilliseconds;
-            if (focus != null)
-                focus.Take();
         }
         partial void CheckFocus(long now)
         {
             if (game || paused || systemBlocked)
                 return;
+            if (pressPoint.HasValue && !WithinClickRange(pressPoint.Value))
+                pressPoint = null;
             bool watch = keyboard.Visible,
                  eligible = eligibleUntil > now && Config.AutoKeyboard && selected != null;
             if (!watch && !eligible)
@@ -219,11 +298,14 @@ namespace Gamepad
             if (focus == null)
                 focus = new FocusDetection();
             var sample = focus.Take();
-            if (sample != null && now >= requestAfter && sample.Window == Win.GetForegroundWindow())
+            if (sample != null && sample.Generation == focusGeneration && now >= requestAfter &&
+                sample.Window == Win.GetForegroundWindow())
             {
-                if (!watch && eligible && sample.Editable)
+                if (!watch && eligible && sample.Editable && sample.Window == requestedWindow &&
+                    (!requestedPoint.HasValue || sample.Bounds.Contains(requestedPoint.Value)))
                 {
                     OpenKeyboard(sample.Bounds, sample.Password ? "English" : Config.StartLayout);
+                    focusGeneration++;
                     focusedId = sample.Id;
                     activatedByFocus = true;
                     eligibleUntil = 0;
@@ -252,7 +334,7 @@ namespace Gamepad
                 CloseKeyboard();
             if (now >= requestAfter && (now >= sampleAt || (focus.Dirty && now >= sampleAt - 70)))
             {
-                focus.Request();
+                focus.Request(focusGeneration);
                 sampleAt = now + 150;
             }
         }
