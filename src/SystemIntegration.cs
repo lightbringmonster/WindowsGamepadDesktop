@@ -8,7 +8,12 @@ namespace Gamepad
 {
     internal sealed class MessageSink : NativeWindow, IDisposable
     {
-        readonly Action emergency, physical, showSettings, exit;
+        const int PollMessage = 0x800B;
+        readonly Action emergency, physical, showSettings, exit, poll;
+        readonly System.Threading.Timer pollTimer;
+        readonly object pollLifetime = new object();
+        int pollPending, pollInterval = 15;
+        bool pollClosed;
         readonly Action<bool> locked;
         internal readonly bool HasHotkey, HasRaw;
         [StructLayout(LayoutKind.Sequential)]
@@ -33,17 +38,42 @@ namespace Gamepad
         static extern bool WTSRegisterSessionNotification(IntPtr window, uint flags);
         [DllImport("wtsapi32.dll")]
         static extern bool WTSUnRegisterSessionNotification(IntPtr window);
-        public MessageSink(Action stop, Action activity, Action<bool> session, Action settings, Action quit)
+        [DllImport("user32.dll", EntryPoint = "SendNotifyMessageW")]
+        static extern bool SendNotifyMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
+        public MessageSink(Action stop, Action activity, Action<bool> session, Action settings, Action quit,
+                           Action pollInput)
         {
             emergency = stop;
             physical = activity;
             locked = session;
             showSettings = settings;
             exit = quit;
+            poll = pollInput;
             CreateHandle(new CreateParams { Caption = "WindowsGamepadDesktop.System", Parent = (IntPtr)(-3) });
             HasHotkey = Win.RegisterHotKey(Handle, 71, 0x4003, 0x7B); // MOD_NOREPEAT | CTRL | ALT
             HasRaw = Register(0x100, Handle);
             WTSRegisterSessionNotification(Handle, 0);
+            var window = Handle;
+            pollTimer = new System.Threading.Timer(_ => RequestPoll(window), null, pollInterval, pollInterval);
+        }
+        // The native title-bar tracking loop can filter WM_TIMER while waiting for mouse-up.
+        // A cross-thread sent message still reaches the UI thread during that loop.
+        void RequestPoll(IntPtr window)
+        {
+            lock (pollLifetime)
+            {
+                if (pollClosed || System.Threading.Interlocked.CompareExchange(ref pollPending, 1, 0) != 0)
+                    return;
+                if (!SendNotifyMessage(window, PollMessage, IntPtr.Zero, IntPtr.Zero))
+                    System.Threading.Interlocked.Exchange(ref pollPending, 0);
+            }
+        }
+        public void SetPollInterval(int interval)
+        {
+            if (pollClosed || interval == pollInterval)
+                return;
+            pollInterval = interval;
+            pollTimer.Change(interval, interval);
         }
         static bool Register(uint flags, IntPtr target)
         {
@@ -53,6 +83,20 @@ namespace Gamepad
         }
         protected override void WndProc(ref Message m)
         {
+            if (m.Msg == PollMessage)
+            {
+                try
+                {
+                    if (!pollClosed)
+                        poll();
+                }
+                finally
+                {
+                    System.Threading.Interlocked.Exchange(ref pollPending, 0);
+                }
+                m.Result = IntPtr.Zero;
+                return;
+            }
             if (m.Msg == 0x8009)
                 showSettings();
             if (m.Msg == 0x800a)
@@ -79,6 +123,11 @@ namespace Gamepad
         }
         public void Dispose()
         {
+            lock (pollLifetime)
+            {
+                pollClosed = true;
+                pollTimer.Dispose();
+            }
             if (HasRaw)
                 Register(1, IntPtr.Zero);
             if (HasHotkey)
@@ -203,7 +252,7 @@ namespace Gamepad
                                            systemBlocked = locked;
                                            CloseKeyboard();
                                        },
-                                       () => ShowSettings(), () => ExitThread());
+                                       () => ShowSettings(), () => ExitThread(), Tick);
         }
         partial void StopSystem()
         {
@@ -245,6 +294,8 @@ namespace Gamepad
                 settings.FormClosed += (s, e) => settings = null;
             }
             settings.Show();
+            if (settings.WindowState == FormWindowState.Minimized)
+                Win.ShowWindow(settings.Handle, 9); // SW_RESTORE
             settings.Activate();
         }
     }

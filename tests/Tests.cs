@@ -22,7 +22,7 @@ namespace Gamepad
         public ControllerState State = new ControllerState();
         public ControllerState Read()
         {
-            return State;
+            return System.Threading.Volatile.Read(ref State);
         }
     }
     internal sealed class SimProvider : IControllerProvider
@@ -57,6 +57,16 @@ namespace Gamepad
             if (args.Length == 2 && args[0] == "--explorer")
             {
                 ExplorerChecks(args[1]);
+                return;
+            }
+            if (args.Contains("--title-loop"))
+            {
+                TitleLoopChecks();
+                return;
+            }
+            if (args.Contains("--minimize"))
+            {
+                MinimizeChecks();
                 return;
             }
             if (args.Contains("--ime"))
