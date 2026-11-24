@@ -249,6 +249,13 @@ namespace Gamepad
                     Hit(pad, "Y");
                     Check(SendMessage(w, 0x8011, IntPtr.Zero, IntPtr.Zero).ToInt32() == 2,
                           "offline Chinese candidate reaches original edit");
+                    Hit(pad, "A");
+                    Await(() => !Shown(), "return closes visible keyboard", 1000);
+                    Hit(pad, "A");
+                    Pump(1000);
+                    Check(!Shown(), "desktop Escape cannot reopen the keyboard at the same field");
+                    Hit(pad, "B");
+                    Await(Shown, "click can reopen the keyboard after Escape", 1800);
                     SendMessage(w, 0x8010, (IntPtr)3, IntPtr.Zero);
                     Await(() => !Shown(), "same-window focus loss closes keyboard", 2500);
                     SendMessage(w, 0x8010, (IntPtr)1, IntPtr.Zero);

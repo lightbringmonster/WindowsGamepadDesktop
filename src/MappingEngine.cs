@@ -157,7 +157,8 @@ namespace Gamepad
                 int[] keys = Tokens(action);
                 if (keys == null)
                     continue;
-                if (edge && Interaction != null)
+                // Escape dismisses UI even when the same editable field keeps focus.
+                if (edge && Interaction != null && keys[keys.Length - 1] != (int)System.Windows.Forms.Keys.Escape)
                     Interaction();
                 if (deferred)
                 {

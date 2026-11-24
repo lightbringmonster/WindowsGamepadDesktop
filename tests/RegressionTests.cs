@@ -9,6 +9,19 @@ namespace Gamepad
     {
         internal static void FinalChecks()
         {
+            var returning = new Capture();
+            var returnEngine = new MappingEngine(returning);
+            var profile = new Profile();
+            int focusRequests = 0;
+            returnEngine.Interaction = () => focusRequests++;
+            returnEngine.Tick(Pad(), profile, 0);
+            returnEngine.Tick(Pad("A"), profile, 32);
+            returnEngine.Tick(Pad(), profile, 64);
+            Check(focusRequests == 0 && returning.Events.SequenceEqual(new[] { "K27True", "K27False" }),
+                  "desktop Escape releases normally and does not request the keyboard");
+            returnEngine.Tick(Pad("B"), profile, 96);
+            Check(focusRequests == 1, "desktop click still requests editable focus sampling");
+
             var rules = new ApplicationProfiles();
             var apps = new[] { "room.exe" };
             Check(rules.Enter("desktop.exe", apps) == false && rules.Enter("ROOM.EXE", apps) == true,
