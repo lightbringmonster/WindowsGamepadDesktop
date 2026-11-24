@@ -9,6 +9,7 @@ namespace Gamepad
     {
         internal static void FinalChecks()
         {
+            ConfirmBackChecks();
             var returning = new Capture();
             var returnEngine = new MappingEngine(returning);
             var profile = new Profile();

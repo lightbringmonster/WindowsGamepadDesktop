@@ -25,6 +25,26 @@ namespace Gamepad
     public sealed class ControllerCapabilities
     {
         public string[] Controls;
+        public Dictionary<string, string> Labels;
+        internal string DisplayLabel(string id)
+        {
+            string label;
+            if (Labels != null && Labels.TryGetValue(id, out label))
+                return label;
+            switch (id)
+            {
+            case "Up":
+                return "↑ Up";
+            case "Down":
+                return "↓ Down";
+            case "Left":
+                return "← Left";
+            case "Right":
+                return "→ Right";
+            default:
+                return id;
+            }
+        }
         public bool HasGyroscope, HasAccelerometer, HasBattery;
     }
     public interface IControllerDevice
@@ -37,15 +57,26 @@ namespace Gamepad
     }
     public interface IControllerProvider
     {
+        // Return a current snapshot. Keep each device object stable while it is attached.
         IEnumerable<IControllerDevice> Devices { get; }
     }
     public sealed class DeviceManager
     {
-        public readonly List<IControllerDevice> Devices;
+        readonly IControllerProvider[] providers;
+        public List<IControllerDevice> Devices { get; private set; }
         public DeviceManager(params IControllerProvider[] providers)
         {
+            this.providers = providers;
+            Refresh();
+        }
+        public void Refresh()
+        {
             Devices =
-                providers.SelectMany(p => p.Devices).GroupBy(d => d.PhysicalKey).Select(g => g.First()).ToList();
+                providers.SelectMany(provider => provider.Devices)
+                    .GroupBy(device => String.IsNullOrEmpty(device.PhysicalKey) ? device.Id : device.PhysicalKey,
+                             StringComparer.Ordinal)
+                    .Select(group => group.First())
+                    .ToList();
         }
         // Automatic choice is latched for the session, including across disconnection.
         public string Primary;

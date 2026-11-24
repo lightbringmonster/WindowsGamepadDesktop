@@ -21,6 +21,10 @@ Tests were performed on 2026-11-24. The environment was a Dell G15 5520 with Win
 
 Windows tests send characters only while the intended test window has focus. The test may stop when the window is covered by another program. The test program briefly uses the mouse and attempts to restore the mouse position and foreground window when finished. The product does not include these test entry points.
 
+## 0.9.6 Confirm, Back, and extended button mapping
+
+75 core checks and the settings preview checks passed. Tests covered swapping A/B, assigning Down and Right, moving displaced actions, and saving and restoring extended bindings. A simulated 49-button controller exposed all reported inputs in settings, identified Button.48 live, and assigned independent desktop and on-screen actions to Button.48 and Paddle4. A simulated second provider added a controller while settings was open. Removing the device released a held mouse button. Reconnecting under the same ID with 50 buttons preserved the existing bindings. Physical extended-button input remains unverified.
+
 ## 0.9.5 Browser focus and mode feedback
 
 65 core checks and 37 Windows integration checks passed. In isolated Chrome and Edge profiles, clicking the new-tab button or using a binding for Ctrl + T left the keyboard closed when the address bar gained focus. Clicking the address bar or a webpage text field still opened the keyboard. Windows Search and File Explorer edit-field tests also passed.

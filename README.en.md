@@ -60,6 +60,10 @@ The keyboard opens on the target display by default and moves out of the way of 
 
 ## Controllers and settings
 
+In **Settings → 按键映射** (Button Mapping), choose a controller, pick **确认** (Confirm) and **返回** (Back), and click **应用** (Apply). **互换** (Swap) exchanges the two selections. Click **保存设置** (Save Settings) to activate the change. Confirm sends a left click on the desktop and selects on the on-screen keyboard. Back sends Escape or closes the on-screen keyboard.
+
+The mapping editor lists the inputs reported by the selected device. Press a key to see its label. Independent extended buttons have separate desktop and keyboard assignments when the input provider exposes them. This release uses XInput. Firmware mappings determine whether Windows receives a separate button event.
+
 XInput exposes up to four slots. Automatic primary selection stays on the first selected slot for the current session. If it disconnects, the desktop mapper waits for that slot to return. Select another slot in settings to change the primary controller.
 
 Slot numbers are temporary. Save a named mapping profile to reassign it when your controller changes slots. XInput devices expose a common set of controls, and other provider capabilities can add controls. See [hardware extensions](HARDWARE_EXTENSION.en.md).

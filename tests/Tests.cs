@@ -13,10 +13,11 @@ namespace Gamepad
                 return Id;
             }
         }
+        public ControllerCapabilities DeviceCapabilities;
         public ControllerCapabilities Capabilities
         {
             get {
-                return new ControllerCapabilities { Controls = XInputDevice.Standard };
+                return DeviceCapabilities ?? new ControllerCapabilities { Controls = XInputDevice.Standard };
             }
         }
         public ControllerState State = new ControllerState();
@@ -135,6 +136,7 @@ namespace Gamepad
                   "reconnect and explicit primary");
             foreach (var d in new XInputControllerProvider().Devices)
                 Console.WriteLine("PROBE " + d.Id + " " + d.Read().Connected);
+            CheckProviderRefresh();
             More();
             FinalChecks();
             Console.WriteLine("Passed " + count + " checks");
