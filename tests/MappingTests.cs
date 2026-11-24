@@ -56,12 +56,12 @@ namespace Gamepad
             engine.Tick(Pad(), p, 0);
             engine.Tick(Pad("LB"), p, 10);
             engine.Tick(Pad("LB", "RB"), p, 25);
-            engine.Tick(Pad("LB", "RB"), p, 1024);
+            engine.Tick(Pad("LB", "RB"), p, 2024);
             Check(modes == 0 && keyboards == 0 && output.Events.Count == 0,
                   "chord does not leak before threshold");
-            engine.Tick(Pad("LB", "RB"), p, 1025);
-            engine.Tick(Pad(), p, 1030);
-            engine.Tick(Pad("B"), p, 1038);
+            engine.Tick(Pad("LB", "RB"), p, 2025);
+            engine.Tick(Pad(), p, 2030);
+            engine.Tick(Pad("B"), p, 2038);
             Check(modes == 1 && output.Events.Count == 0, "native mode emits no mouse or keys");
             engine.SetContext(false, false, false);
             engine.Tick(Pad(), p, 0);
@@ -88,6 +88,7 @@ namespace Gamepad
             cfg.For("xinput:0").Speed = 1234;
             Check(SettingsStore.Decode(SettingsStore.Encode(cfg)).For("xinput:0").Speed == 1234, "JSON roundtrip");
             Check(SettingsStore.Decode("{\"Version\":1}").Version == 2, "v1 migration");
+            ModeGestureChecks();
             MoreUI();
         }
         static partial void MoreUI();

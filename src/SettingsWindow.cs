@@ -328,7 +328,8 @@ namespace Gamepad
                                                                 }
                                                             }));
                 f.Controls.Add(Line("配置名（可留空）", profiles));
-                f.Controls.Add(Line("长按一秒切换模式", combination));
+                f.Controls.Add(Line("模式组合键", combination));
+                f.Controls.Add(Caption("按满 2 秒后松开切换模式，按满 3 秒锁定或解锁。"));
                 f.Controls.Add(Caption("桌面动作可填写 Key:Ctrl+Shift+S 等组合，或从下方列表选取。"));
                 var picker = Combo();
                 picker.Width = 155;
