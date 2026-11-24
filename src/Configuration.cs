@@ -116,6 +116,7 @@ namespace Gamepad
         public int KeyboardHeight { get; set; }
         public Dictionary<string, string> AssignedProfiles { get; set; }
         public string[] GameApps { get; set; }
+        public string[] MultiplayerApps { get; set; }
         public Dictionary<string, Profile> Profiles { get; set; }
         public Settings()
         {
@@ -127,6 +128,7 @@ namespace Gamepad
             StartLayout = "English";
             KeyboardHeight = 41;
             GameApps = new[] { "Playnite.FullscreenApp.exe" };
+            MultiplayerApps = new string[0];
             Profiles = new Dictionary<string, Profile>();
         }
         public Profile For(string id)
@@ -149,10 +151,7 @@ namespace Gamepad
                 KeyboardHeight < 28 || KeyboardHeight > 52 ||
                 !new[] { "English", "拼音", "数字符号", "系统 IME", "编辑" }.Contains(StartLayout))
                 throw new FormatException("配置版本或键盘设置无效");
-            if (GameApps.Length > 256 ||
-                GameApps.Any(s => String.IsNullOrWhiteSpace(s) ||
-                                  s.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
-                                  !s.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)))
+            if (!ValidAppList(GameApps) || !ValidAppList(MultiplayerApps))
                 throw new FormatException("应用规则需要进程文件名，例如 game.exe");
             foreach (var entry in Profiles)
             {
@@ -160,6 +159,14 @@ namespace Gamepad
                     throw new FormatException("设备配置无效");
                 entry.Value.Validate();
             }
+        }
+
+        static bool ValidAppList(string[] apps)
+        {
+            return apps != null && apps.Length <= 256 &&
+                   apps.All(name => !String.IsNullOrWhiteSpace(name) &&
+                                    name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 &&
+                                    name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
         }
     }
     public static class SettingsStore

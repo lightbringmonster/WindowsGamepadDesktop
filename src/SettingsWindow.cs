@@ -35,8 +35,7 @@ namespace Gamepad
         readonly Label status = Caption(""), capabilities = Caption("");
         readonly StickView live = new StickView();
         readonly DataGridView grid = new DataGridView();
-        readonly TextBox combination = new TextBox(), apps = new TextBox { Multiline = true, AcceptsReturn = true,
-                                                                           ScrollBars = ScrollBars.Vertical };
+        readonly TextBox combination = new TextBox(), apps = AppList(), multiplayerApps = AppList();
         readonly CheckBox auto = new CheckBox { Text = "手柄选中可编辑输入框时自动打开键盘", AutoSize = true };
         readonly Timer refresh = new Timer { Interval = 100 };
         readonly ToolTip mappingTips = new ToolTip();
@@ -156,6 +155,11 @@ namespace Gamepad
             return new NumericUpDown { Minimum = min, Maximum = max, DecimalPlaces = decimals, Increment = step,
                                        Width = 110 };
         }
+        static TextBox AppList()
+        {
+            return new TextBox { Multiline = true, AcceptsReturn = true, ScrollBars = ScrollBars.Vertical };
+        }
+
         static Button Button(string t, Action f)
         {
             var b = new Button { Text = t,
@@ -210,6 +214,7 @@ namespace Gamepad
             display.SelectedIndex = Math.Max(0, display.Items.IndexOf(draft.Display));
             layout.SelectedItem = draft.StartLayout;
             apps.Lines = draft.GameApps;
+            multiplayerApps.Lines = draft.MultiplayerApps;
             loading = false;
             deviceId = null;
             SwitchDevice();
@@ -424,7 +429,7 @@ namespace Gamepad
             content.SuspendLayout();
             foreach (Control shared in new Control[] { heading, status, primary, device, capabilities, live, speed,
                                                        dead, curve, profileName, combination, grid, auto, layout,
-                                                       display, height, apps, quickBindings, inputPreview })
+                                                       display, height, apps, multiplayerApps, quickBindings, inputPreview })
                 if (shared.Parent != null)
                     shared.Parent.Controls.Remove(shared);
             foreach (Control old in content.Controls.Cast<Control>().ToArray())
@@ -510,26 +515,39 @@ namespace Gamepad
             }
             else
             {
-                f.Controls.Add(
-                    Caption("以下进程位于前台时使用原生手柄，离开后恢复桌面。每行填写一个 .exe 文件名。"));
-                apps.Width = Math.Max(440, content.ClientSize.Width - 65);
-                apps.Height = 205;
-                f.Controls.Add(apps);
-                f.Controls.Add(Button("选择应用程序…",
-                                      () =>
-                                      {
-                                          using (var dlg =
-                                                     new OpenFileDialog {
-                                                         Filter = "应用程序|*.exe"
-                                                     }) if (dlg.ShowDialog(this) == DialogResult.OK) apps.Lines =
-                                              apps.Lines.Where(a => !String.IsNullOrWhiteSpace(a))
-                                                  .Concat(new[] { System.IO.Path.GetFileName(dlg.FileName) })
-                                                  .Distinct(StringComparer.OrdinalIgnoreCase)
-                                                  .ToArray();
-                                      }));
+                AddApplicationList(f, "自动切换原生手柄", "前台应用按进程名匹配，应用离开前台后恢复桌面模式。",
+                                   apps);
+                AddApplicationList(f, "本地多人保护", "游戏在前台时暂停键鼠映射，两台手柄交给游戏。此规则也适用于锁定的桌面模式。",
+                                   multiplayerApps);
             }
             content.ResumeLayout(true);
         }
+        void AddApplicationList(FlowLayoutPanel page, string title, string help, TextBox list)
+        {
+            var heading = Caption(title);
+            heading.ForeColor = Ink;
+            page.Controls.Add(heading);
+            page.Controls.Add(Caption(help));
+            list.Width = Math.Max(400, content.ClientSize.Width - 65);
+            list.Height = 88;
+            list.AccessibleName = title;
+            page.Controls.Add(list);
+            var add = Button("添加程序…", () =>
+            {
+                using (var dialog = new OpenFileDialog { Filter = "应用程序|*.exe" })
+                    if (dialog.ShowDialog(this) == DialogResult.OK)
+                        list.Lines = ProcessNames(list.Lines.Concat(new[] { System.IO.Path.GetFileName(dialog.FileName) }));
+            });
+            add.AccessibleName = "为" + title + "添加程序";
+            page.Controls.Add(add);
+        }
+
+        static string[] ProcessNames(IEnumerable<string> entries)
+        {
+            return entries.Select(entry => entry.Trim()).Where(entry => entry.Length > 0)
+                          .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        }
+
         static Control Line(string name, Control input)
         {
             var p =
@@ -556,10 +574,8 @@ namespace Gamepad
             draft.Display = display.SelectedIndex <= 0 ? "" : display.Text;
             draft.StartLayout = layout.Text;
             draft.KeyboardHeight = (int)height.Value;
-            draft.GameApps = apps.Lines.Select(s => s.Trim())
-                                 .Where(s => s.Length > 0)
-                                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                                 .ToArray();
+            draft.GameApps = ProcessNames(apps.Lines);
+            draft.MultiplayerApps = ProcessNames(multiplayerApps.Lines);
             draft.Validate();
             return draft;
         }

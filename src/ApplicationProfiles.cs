@@ -8,14 +8,17 @@ namespace Gamepad
         string current;
         public bool? Enter(string processName, string[] gameApps)
         {
-            string next =
-                gameApps.FirstOrDefault(x => String.Equals(x, processName, StringComparison.OrdinalIgnoreCase)) ??
-                "";
+            string next = Matches(processName, gameApps) ? processName : "";
             if (String.Equals(current, next, StringComparison.OrdinalIgnoreCase))
                 return null;
             current = next;
             return next.Length != 0;
         }
+        internal static bool Matches(string processName, string[] entries)
+        {
+            return entries.Contains(processName, StringComparer.OrdinalIgnoreCase);
+        }
+
         public void Reload()
         {
             current = null;

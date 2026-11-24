@@ -199,7 +199,7 @@ namespace Gamepad
         bool CanRequestKeyboard
         {
             get {
-                return Config.AutoKeyboard && !keyboard.Visible && !game && !paused && !systemBlocked;
+                return Config.AutoKeyboard && !keyboard.Visible && !NativeInputOnly && !paused && !systemBlocked;
             }
         }
 
@@ -287,7 +287,7 @@ namespace Gamepad
         }
         partial void CheckFocus(long now)
         {
-            if (game || paused || systemBlocked)
+            if (NativeInputOnly || paused || systemBlocked)
                 return;
             if (pressPoint.HasValue && !WithinClickRange(pressPoint.Value))
                 pressPoint = null;

@@ -9,6 +9,7 @@
   "GameApps": [
     "Playnite.FullscreenApp.exe"
   ],
+  "MultiplayerApps": [],
   "Profiles": {
     "xinput:0": {
       "Speed": 940,
