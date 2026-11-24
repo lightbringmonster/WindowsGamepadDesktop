@@ -86,7 +86,7 @@ Normal Windows permissions apply. Elevated windows, the UAC secure desktop, and 
 
 ## Contributors
 
-- **Codex** · Implementation and testing
+- [**Codex**](https://github.com/codex) · Implementation and testing
 
 ## License
 
