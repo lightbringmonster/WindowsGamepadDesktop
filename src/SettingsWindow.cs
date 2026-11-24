@@ -27,6 +27,9 @@ namespace Gamepad
         readonly FlowLayoutPanel quickBindings = new FlowLayoutPanel { AutoSize = true, WrapContents = true };
         readonly Label inputPreview = Caption("");
         ControllerCapabilities displayedCapabilities;
+        IControllerDevice displayedDevice;
+        readonly List<IControllerDevice> deviceOptions = new List<IControllerDevice>();
+        readonly List<string> primaryOptions = new List<string> { "" };
         readonly NumericUpDown speed = Number(100, 4000, 0, 50), dead = Number(2, 75, 0, 1),
                                curve = Number(.5m, 4, 2, .05m), height = Number(28, 52, 0, 1);
         readonly Label status = Caption(""), capabilities = Caption("");
@@ -83,12 +86,8 @@ namespace Gamepad
             nav.Controls.Add(save);
             heading.ForeColor = Ink;
             heading.Font = new Font(Font.FontFamily, 19, FontStyle.Bold);
-            foreach (var d in host.Devices)
-            {
-                device.Items.Add(d.Name);
-                primary.Items.Add(d.Name);
-            }
-            primary.Items.Insert(0, "自动锁定首个接入槽位");
+            primary.Items.Add("自动选择首个接入的手柄");
+            primary.AccessibleName = "主控手柄";
             SetupQuickBindings();
             layout.Items.AddRange(KeyboardModel.Layouts);
             display.Items.Add("跟随目标输入框");
@@ -146,7 +145,7 @@ namespace Gamepad
                 return;
             }
             StoreProfile();
-            var d = host.Devices.First(item => item.Id == deviceId);
+            var d = deviceOptions.First(item => item.Id == deviceId);
             ConfirmBackBindings.Apply(draft.For(deviceId), swap ? back : confirm, swap ? confirm : back,
                                       confirmButton.Items.Cast<string>());
             LoadProfile(d);
@@ -170,13 +169,42 @@ namespace Gamepad
             b.Click += (s, e) => f();
             return b;
         }
+        void RefreshDeviceOptions()
+        {
+            foreach (var item in host.Devices)
+            {
+                int index = deviceOptions.FindIndex(option => option.Id == item.Id);
+                if (index < 0)
+                {
+                    deviceOptions.Add(item);
+                    device.Items.Add(item.Name);
+                }
+                else
+                    deviceOptions[index] = item;
+
+                int primaryIndex = primaryOptions.IndexOf(item.Id);
+                if (primaryIndex < 0)
+                {
+                    primaryOptions.Add(item.Id);
+                    primary.Items.Add(item.Name);
+                }
+                else if (!Equals(primary.Items[primaryIndex], item.Name))
+                    primary.Items[primaryIndex] = item.Name;
+            }
+        }
+
         void InitDraft()
         {
             loading = true;
-            var devices = host.Devices.ToList();
-            int i = devices.FindIndex(d => d.Id == (host.ActiveId ?? draft.Primary));
-            device.SelectedIndex = Math.Max(0, i);
-            primary.SelectedIndex = 1 + devices.FindIndex(d => d.Id == draft.Primary);
+            RefreshDeviceOptions();
+            int i = deviceOptions.FindIndex(d => d.Id == (host.ActiveId ?? draft.Primary));
+            device.SelectedIndex = deviceOptions.Count == 0 ? -1 : Math.Max(0, i);
+            if (!primaryOptions.Contains(draft.Primary))
+            {
+                primaryOptions.Add(draft.Primary);
+                primary.Items.Add("已保存的手柄（未连接）");
+            }
+            primary.SelectedIndex = primaryOptions.IndexOf(draft.Primary);
             auto.Checked = draft.AutoKeyboard;
             height.Value = draft.KeyboardHeight;
             display.SelectedIndex = Math.Max(0, display.Items.IndexOf(draft.Display));
@@ -266,7 +294,7 @@ namespace Gamepad
             if (loading || device.SelectedIndex < 0)
                 return;
             StoreProfile();
-            var d = host.Devices.ElementAt(device.SelectedIndex);
+            var d = deviceOptions[device.SelectedIndex];
             deviceId = d.Id;
             ReflectProfileName();
             LoadProfile(d);
@@ -284,6 +312,8 @@ namespace Gamepad
         }
         void AssignProfile()
         {
+            if (deviceId == null)
+                return;
             StoreProfile();
             string name = profileName.Text.Trim();
             if (name.Length > 64)
@@ -300,7 +330,7 @@ namespace Gamepad
                 draft.AssignedProfiles[deviceId] = name;
             }
             ReflectProfileName();
-            LoadProfile(host.Devices.First(d => d.Id == deviceId));
+            LoadProfile(deviceOptions.First(d => d.Id == deviceId));
         }
         void LoadProfile(IControllerDevice d)
         {
@@ -310,6 +340,7 @@ namespace Gamepad
             curve.Value = (decimal)p.Curve;
             combination.Text = p.ModeChord;
             combination.Width = 186;
+            displayedDevice = d;
             displayedCapabilities = d.Capabilities;
             var buttons = d.Capabilities.Controls.Where(k => !Profile.IsAxis(k)).ToArray();
             foreach (var picker in new[] { confirmButton, backButton })
@@ -334,7 +365,7 @@ namespace Gamepad
                 grid.Rows[i].Cells[2] = cell;
             }
             loadingMapping = false;
-            RefreshDevice();
+            RefreshReading(d);
         }
 
         void ReflectQuickBindings(Profile profile)
@@ -346,9 +377,23 @@ namespace Gamepad
 
         void RefreshDevice()
         {
+            RefreshDeviceOptions();
+            if (device.SelectedIndex < 0 && deviceOptions.Count > 0)
+                device.SelectedIndex = 0;
             if (deviceId == null)
                 return;
-            var d = host.Devices.First(o => o.Id == deviceId);
+            var d = deviceOptions.First(o => o.Id == deviceId);
+            if (!ReferenceEquals(displayedDevice, d))
+            {
+                StoreProfile();
+                LoadProfile(d);
+                return;
+            }
+            RefreshReading(d);
+        }
+
+        void RefreshReading(IControllerDevice d)
+        {
             ControllerState s;
             if (!host.States.TryGetValue(deviceId, out s))
                 s = new ControllerState();
@@ -498,12 +543,15 @@ namespace Gamepad
         }
         Settings Gather()
         {
-            string named;
-            draft.AssignedProfiles.TryGetValue(deviceId, out named);
-            if ((named ?? "") != profileName.Text.Trim())
-                AssignProfile();
-            StoreProfile();
-            draft.Primary = primary.SelectedIndex <= 0 ? "" : host.Devices.ElementAt(primary.SelectedIndex - 1).Id;
+            if (deviceId != null)
+            {
+                string named;
+                draft.AssignedProfiles.TryGetValue(deviceId, out named);
+                if ((named ?? "") != profileName.Text.Trim())
+                    AssignProfile();
+                StoreProfile();
+            }
+            draft.Primary = primary.SelectedIndex < 0 ? "" : primaryOptions[primary.SelectedIndex];
             draft.AutoKeyboard = auto.Checked;
             draft.Display = display.SelectedIndex <= 0 ? "" : display.Text;
             draft.StartLayout = layout.Text;

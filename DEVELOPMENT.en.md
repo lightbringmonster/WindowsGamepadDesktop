@@ -40,7 +40,7 @@ The reference repository's file-location list was extracted read-only by DeepSee
 
 ## 0.9.6
 
-Added quick reassignment and swapping for Confirm and Back. The change uses the existing desktop and on-screen keyboard mappings for the selected device and preserves the profile format. The mapping editor displays the controls reported by the provider and identifies currently pressed buttons.
+Added quick reassignment and swapping for Confirm and Back. The change uses the existing desktop and on-screen keyboard mappings for the selected device and preserves the profile format. The mapping editor displays the controls reported by the provider and identifies currently pressed buttons. Discovery scans multiple providers and updates settings on arrival, removal, or reconnection.
 
 ## 0.9.5
 

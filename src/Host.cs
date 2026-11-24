@@ -19,17 +19,18 @@ namespace Gamepad
         readonly KeyboardWindow keyboard;
         readonly NotifyIcon tray = new NotifyIcon();
         readonly ContextMenuStrip menu = new ContextMenuStrip();
-        string selected;
+        IControllerDevice activeDevice;
         long nextScan;
         bool paused, game, modeLocked, closing;
         IntPtr target, observed, lastApp;
         readonly ApplicationProfiles policy = new ApplicationProfiles();
         bool firstRule = true;
-        public Host(Settings cfg, IControllerProvider provider, IInputSink output, bool openSettings)
+        public Host(Settings cfg, IControllerProvider provider, IInputSink output, bool openSettings,
+                    params IControllerProvider[] additionalProviders)
         {
             Config = cfg;
             sink = output;
-            manager = new DeviceManager(provider);
+            manager = new DeviceManager(new[] { provider }.Concat(additionalProviders).ToArray());
             engine = new MappingEngine(sink);
             engine.ToggleMode = ToggleGame;
             engine.ModeSwitchReady = ShowSwitchPrompt;
@@ -72,7 +73,7 @@ namespace Gamepad
         internal string ActiveId
         {
             get {
-                return selected;
+                return activeDevice == null ? null : activeDevice.Id;
             }
         }
         internal string ModeName
@@ -139,7 +140,7 @@ namespace Gamepad
             model.Open(layout);
             engine.SetContext(game, paused, true);
             keyboard.Legend =
-                selected == null ? KeyboardWindow.DefaultLegend : KeyboardWindow.MakeLegend(Config.For(selected));
+                ActiveId == null ? KeyboardWindow.DefaultLegend : KeyboardWindow.MakeLegend(Config.For(ActiveId));
             keyboard.Present(target, bounds, Config);
         }
         void Command(string cmd)
@@ -227,16 +228,22 @@ namespace Gamepad
                 CheckForeground(fg);
             bool scan = now >= nextScan;
             if (scan)
+            {
                 nextScan = now + 850;
+                manager.Refresh();
+                var listed = new HashSet<string>(manager.Devices.Select(device => device.Id));
+                foreach (var stale in States.Keys.Where(key => !listed.Contains(key)).ToArray())
+                    States.Remove(stale);
+            }
             foreach (var d in manager.Devices)
-                if (scan || selected == d.Id ||
+                if (scan || ActiveId == d.Id ||
                     (SettingsVisible && States.ContainsKey(d.Id) && States[d.Id].Connected))
                     States[d.Id] = d.Read();
             var active = manager.Select(Config.Primary, States.Where(p => p.Value.Connected).Select(p => p.Key));
             string id = active == null ? null : active.Id;
-            if (id != selected)
+            if (!ReferenceEquals(activeDevice, active))
             {
-                selected = id;
+                activeDevice = active;
                 engine.Reset();
                 CloseKeyboard();
             }

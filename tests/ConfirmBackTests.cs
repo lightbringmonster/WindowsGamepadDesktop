@@ -6,6 +6,33 @@ namespace Gamepad
 {
     internal static partial class Tests
     {
+        static void CheckProviderRefresh()
+        {
+            var first = new SimDevice { Id = "first:1", PhysicalKey = "physical:1", State = Pad() };
+            var duplicate = new SimDevice { Id = "other:1", PhysicalKey = first.PhysicalKey, State = Pad() };
+            var independentA = new SimDevice { Id = "other:2", State = Pad() };
+            var independentB = new SimDevice { Id = "other:3", State = Pad() };
+            var main = new SimProvider { Devices = new[] { first } };
+            var extra = new SimProvider { Devices = new IControllerDevice[0] };
+            var manager = new DeviceManager(main, extra);
+            Check(manager.Select("", new[] { first.Id }) == first, "first controller selected before hot plug");
+            extra.Devices = new[] { duplicate, independentA, independentB };
+            manager.Refresh();
+            Check(manager.Devices.Contains(first) && !manager.Devices.Contains(duplicate) &&
+                      manager.Devices.Contains(independentA) && manager.Devices.Contains(independentB),
+                  "dynamic enumeration deduplicates known hardware and preserves unknown identities");
+            main.Devices = new IControllerDevice[0];
+            manager.Refresh();
+            Check(!manager.Devices.Contains(first) &&
+                      manager.Select("", manager.Devices.Select(d => d.Id)) == null,
+                  "discovery removal releases the primary slot without switching to a different device");
+            var replacement = new SimDevice { Id = first.Id, PhysicalKey = first.PhysicalKey, State = Pad() };
+            main.Devices = new[] { replacement };
+            manager.Refresh();
+            Check(manager.Select("", new[] { replacement.Id }) == replacement && !manager.Devices.Contains(first),
+                  "reconnected provider can replace the object while keeping the profile ID");
+        }
+
         static void ConfirmBackChecks()
         {
             var profile = new Profile();

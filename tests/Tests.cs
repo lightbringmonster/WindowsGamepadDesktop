@@ -136,6 +136,7 @@ namespace Gamepad
                   "reconnect and explicit primary");
             foreach (var d in new XInputControllerProvider().Devices)
                 Console.WriteLine("PROBE " + d.Id + " " + d.Read().Connected);
+            CheckProviderRefresh();
             More();
             FinalChecks();
             Console.WriteLine("Passed " + count + " checks");

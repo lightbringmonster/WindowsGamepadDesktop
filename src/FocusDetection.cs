@@ -292,7 +292,7 @@ namespace Gamepad
             if (pressPoint.HasValue && !WithinClickRange(pressPoint.Value))
                 pressPoint = null;
             bool watch = keyboard.Visible,
-                 eligible = eligibleUntil > now && Config.AutoKeyboard && selected != null;
+                 eligible = eligibleUntil > now && Config.AutoKeyboard && ActiveId != null;
             if (!watch && !eligible)
                 return;
             if (focus == null)

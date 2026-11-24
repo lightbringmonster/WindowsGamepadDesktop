@@ -23,7 +23,7 @@ Windows tests send characters only while the intended test window has focus. The
 
 ## 0.9.6 Confirm, Back, and extended button mapping
 
-71 core checks and the settings preview checks passed. Tests covered swapping A/B, assigning Down and Right, moving displaced actions, and saving and restoring extended bindings. A simulated 49-button controller exposed all reported inputs in settings, identified Button.48 live, and assigned independent desktop and on-screen actions to Button.48 and Paddle4. Physical extended-button input remains unverified.
+75 core checks and the settings preview checks passed. Tests covered swapping A/B, assigning Down and Right, moving displaced actions, and saving and restoring extended bindings. A simulated 49-button controller exposed all reported inputs in settings, identified Button.48 live, and assigned independent desktop and on-screen actions to Button.48 and Paddle4. A simulated second provider added a controller while settings was open. Removing the device released a held mouse button. Reconnecting under the same ID with 50 buttons preserved the existing bindings. Physical extended-button input remains unverified.
 
 ## 0.9.5 Browser focus and mode feedback
 

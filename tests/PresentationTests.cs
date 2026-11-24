@@ -11,7 +11,7 @@ namespace Gamepad
         {
             Directory.CreateDirectory(directory);
             Application.EnableVisualStyles();
-            var cfg = new Settings();
+            var cfg = new Settings { Primary = "Test Controller" };
             var largePad = new SimDevice
             {
                 Id = "Test Controller",
@@ -22,8 +22,10 @@ namespace Gamepad
                     Controls = Enumerable.Range(1, 48).Select(i => "Button." + i).Concat(new[] { "Paddle4" }).ToArray()
                 }
             };
-            var devices = new XInputControllerProvider().Devices.Concat(new[] { largePad });
-            using (var host = new Host(cfg, new SimProvider { Devices = devices }, new Capture(), false)) using (
+            var provider = new SimProvider { Devices = new IControllerDevice[0] };
+            cfg.For(largePad.Id).Desktop["Paddle4"] = "MouseLeft";
+            var capture = new Capture();
+            using (var host = new Host(cfg, new XInputControllerProvider(), capture, false, provider)) using (
                 var settings = new SettingsWindow(host))
             {
                 try
@@ -32,6 +34,7 @@ namespace Gamepad
                     Pump(160);
                     Check(settings.Visible, "settings window opens");
                     Snap(settings, Path.Combine(directory, "devices.png"));
+                    var primary = Descendants(settings).OfType<ComboBox>().Single(combo => combo.AccessibleName == "主控手柄");
                     foreach (string section in new[] { "按键映射", "虚拟键盘", "应用规则", "设备" })
                     {
                         var button = Descendants(settings).OfType<Button>().First(b => b.Text == section);
@@ -43,7 +46,7 @@ namespace Gamepad
                             var grid = Descendants(settings).OfType<DataGridView>().Single();
                             Check(grid.Rows.Count >= 18, "mapping editor populated");
                             Snap(settings, Path.Combine(directory, "mappings.png"));
-                            CheckQuickBindings(settings, grid, directory);
+                            CheckQuickBindings(settings, grid, directory, primary, host, provider, largePad, capture);
                         }
                     }
                     var model =
@@ -75,7 +78,8 @@ namespace Gamepad
                 }
             }
         }
-        static void CheckQuickBindings(SettingsWindow settings, DataGridView grid, string directory)
+        static void CheckQuickBindings(SettingsWindow settings, DataGridView grid, string directory,
+                                       ComboBox primary, Host host, SimProvider provider, SimDevice largePad, Capture capture)
         {
             var controls = Descendants(settings).ToArray();
             var device = controls.OfType<ComboBox>().Single(combo => combo.AccessibleName == "编辑设备");
@@ -85,7 +89,11 @@ namespace Gamepad
             controls.OfType<Button>().Single(button => button.Text == "互换").PerformClick();
             Check((string)confirm.SelectedItem == "A" && (string)back.SelectedItem == "B",
                   "settings swaps default confirm and back");
-            device.SelectedItem = "Test Controller";
+            Check(primary.Text == "已保存的手柄（未连接）", "settings keeps an offline primary selection");
+            provider.Devices = new[] { largePad };
+            Await(() => device.Items.Contains(largePad.Name) && primary.Text == largePad.Name,
+                  "new provider device appears while settings are open", 2300);
+            device.SelectedItem = largePad.Name;
             Pump(150);
             Check(grid.Rows.Count == 49 && confirm.Items.Contains("Button.48") && back.Items.Contains("Paddle4"),
                   "settings lists all 49 reported extended controls");
@@ -99,6 +107,31 @@ namespace Gamepad
             Check((string)row.Cells[1].Value == "MouseLeft" && (string)row.Cells[2].Value == "Select",
                   "quick settings writes the extra button to both mapping columns");
             Snap(settings, Path.Combine(directory, "mappings-extra.png"));
+            largePad.State = Pad();
+            Pump(90);
+            largePad.State = Pad("Paddle4");
+            Await(() => capture.Events.LastOrDefault() == "M1True", "simulated extra button holds a desktop click", 1200);
+            provider.Devices = new IControllerDevice[0];
+            Await(() => !host.States.ContainsKey(largePad.Id) && host.ActiveId == null,
+                  "disappearing provider clears stale input instead of retaining the down event", 2300);
+            Check(capture.Events.LastOrDefault() == "M1False", "hot removal releases the held mouse button");
+            Check(device.Text == largePad.Name && (string)confirm.SelectedItem == "Button.48",
+                  "disconnected device keeps its mapping draft visible");
+            var replacement = new SimDevice
+            {
+                Id = largePad.Id,
+                PhysicalKey = largePad.PhysicalKey,
+                State = Pad(),
+                DeviceCapabilities = new ControllerCapabilities
+                {
+                    Controls = largePad.Capabilities.Controls.Concat(new[] { "Paddle5" }).ToArray()
+                }
+            };
+            provider.Devices = new[] { replacement };
+            Await(() => grid.Rows.Count == 50 && confirm.Items.Contains("Paddle5"),
+                  "same ID reconnects with new capabilities without reopening settings", 2300);
+            Check((string)confirm.SelectedItem == "Button.48" && (string)back.SelectedItem == "Paddle4",
+                  "existing custom bindings survive a capability change");
             device.SelectedIndex = 0;
             Check((string)confirm.SelectedItem == "A" && (string)back.SelectedItem == "B",
                   "returning to first device restores its separate draft");
