@@ -1,5 +1,7 @@
 # 测试记录
 
+[文档首页](README.md) · **简体中文** · [English](TESTING.en.md)
+
 测试日期为 2026-11-24。环境为 Dell G15 5520、Windows 11 Pro x64 build 26300、RTX 3060 Laptop。本机探测到 1920×1080 与 2560×1440 显示输出。下列记录区分真实 Windows 软件路径、模拟手柄以及北通实物。
 
 ## 已执行的自动化与 Windows 验证

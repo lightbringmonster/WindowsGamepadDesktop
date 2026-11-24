@@ -1,5 +1,7 @@
 # 新增手柄与设备能力
 
+[文档首页](README.md) · **简体中文** · [English](HARDWARE_EXTENSION.en.md)
+
 当前发布版仅注册 XInputControllerProvider。北通和其他兼容设备共享同一实现。飞智黑武士 5 Pro 标准版的厂商报告、扩展键、体感、连接差异与电量语义均待实物验证。
 
 ## 接入 Provider
