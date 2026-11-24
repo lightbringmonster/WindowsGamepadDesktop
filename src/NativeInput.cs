@@ -45,7 +45,7 @@ namespace Gamepad
             return WindowClass(window) == "Windows.UI.Core.CoreWindow" && IsStartSearchProcess(ProcessNameOf(window));
         }
 
-        internal static bool IsSystemGamepadSurface(IntPtr window)
+        internal static bool IsSystemGamepadSurface(IntPtr window, bool includeDesktop = false)
         {
             switch (WindowClass(window))
             {
@@ -56,6 +56,9 @@ namespace Gamepad
             case "NotifyIconOverflowWindow":
             case "TopLevelWindowForOverflowXamlIsland":
                 return String.Equals(ProcessNameOf(window), "explorer", StringComparison.OrdinalIgnoreCase);
+            case "Progman":
+            case "WorkerW":
+                return includeDesktop && String.Equals(ProcessNameOf(window), "explorer", StringComparison.OrdinalIgnoreCase);
             case "ControlCenterWindow":
                 string name = ProcessNameOf(window);
                 return name == "ShellHost" || name == "ShellExperienceHost";

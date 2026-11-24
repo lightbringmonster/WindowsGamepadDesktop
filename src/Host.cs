@@ -124,16 +124,31 @@ namespace Gamepad
             get { return game || multiplayerProtected; }
         }
 
-        bool ShouldConsumeShellBack()
+        bool ShouldConsumeShellGamepadKey(int key)
         {
             if (closing || paused || systemBlocked || NativeInputOnly || activeDevice == null)
                 return false;
+
+            bool navigation = ShellGamepadKeyFilter.IsNavigationKey(key);
+            var foreground = Win.GetForegroundWindow();
+            if (!Win.IsSystemGamepadSurface(foreground, navigation))
+                return false;
+
+            if (navigation && keyboard.Visible)
+                return foreground == target;
+
             var profile = Config.For(activeDevice.Id);
-            var mapping = keyboard.Visible ? profile.Keyboard : profile.Desktop;
             string action;
+            if (navigation)
+            {
+                string stick = ShellGamepadKeyFilter.StickForNavigationKey(key);
+                return stick != null && profile.Desktop.TryGetValue(stick, out action) &&
+                       (action == "Cursor" || action == "Scroll");
+            }
+
+            var mapping = keyboard.Visible ? profile.Keyboard : profile.Desktop;
             return mapping.TryGetValue("B", out action) &&
-                   action == (keyboard.Visible ? "Select" : "MouseLeft") &&
-                   Win.IsSystemGamepadSurface(Win.GetForegroundWindow());
+                   action == (keyboard.Visible ? "Select" : "MouseLeft");
         }
 
         bool TargetReady()

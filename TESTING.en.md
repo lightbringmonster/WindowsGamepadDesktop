@@ -21,6 +21,10 @@ Tests were performed on 2026-11-24. The environment was a Dell G15 5520 with Win
 
 Windows tests send characters only while the intended test window has focus. The test may stop when the window is covered by another program. The test program briefly uses the mouse and attempts to restore the mouse position and foreground window when finished. The product does not include these test entry points.
 
+## 0.9.10 Stick navigation and Windows focus
+
+83 core checks passed. A physical test of 0.9.9 captured a native left-stick-right event while the on-screen keyboard was visible. Windows Search stayed in the foreground when the keyboard closed. Interactive tests of 0.9.10 confirmed Start's mapped mouse movement, stable desktop focus, stick selection of W, and D-pad selection of Q. The keyboard remained visible through a two-second wait.
+
 ## 0.9.9 Physical B conflicts and Search placement
 
 81 core checks passed. The hardware trace recorded VK_GAMEPAD_B from Windows while Start and Search were active. The interactive regression sent this native Back event and the app's simulated B input together. The first press opened the keyboard, and the second selected a character while Search retained its foreground focus. The displayed keyboard rectangle was clear of the entire Search panel. The direct Windows Search auto-open regression also passed.
