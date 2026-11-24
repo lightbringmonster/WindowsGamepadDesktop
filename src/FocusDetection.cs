@@ -10,7 +10,7 @@ namespace Gamepad
     {
         internal IntPtr Window;
         internal int Generation;
-        internal string Id;
+        internal string Id, AutomationId;
         internal bool Editable, Password;
         internal Rectangle Bounds;
     }
@@ -147,6 +147,7 @@ namespace Gamepad
             r.Id = e.Current.ProcessId + "/" + String.Join(".", runtime);
             if (!e.Current.IsEnabled || !e.Current.HasKeyboardFocus)
                 return r;
+            r.AutomationId = e.Current.AutomationId;
             var type = e.Current.ControlType;
             r.Password = e.Current.IsPassword;
             object pattern;
@@ -285,6 +286,27 @@ namespace Gamepad
             badSince = -1;
             lastGood = clock.ElapsedMilliseconds;
         }
+        internal static bool IsStartSearchHandoff(string clickProcess, string focusProcess, string controlId)
+        {
+            return String.Equals(clickProcess, "StartMenuExperienceHost", StringComparison.OrdinalIgnoreCase) &&
+                   (String.Equals(focusProcess, "SearchHost", StringComparison.OrdinalIgnoreCase) ||
+                    String.Equals(focusProcess, "SearchApp", StringComparison.OrdinalIgnoreCase)) &&
+                   String.Equals(controlId, "SearchTextBox", StringComparison.Ordinal);
+        }
+
+        bool MatchesFocusRequest(FocusInfo sample)
+        {
+            if (requestedPoint.HasValue && !sample.Bounds.Contains(requestedPoint.Value))
+                return false;
+            if (sample.Window == requestedWindow)
+                return true;
+
+            // The visible start-menu search bar passes the click to Windows Search in another process.
+            return requestedPoint.HasValue && sample.AutomationId == "SearchTextBox" &&
+                   IsStartSearchHandoff(Win.ProcessNameOf(requestedWindow), Win.ProcessNameOf(sample.Window),
+                                        sample.AutomationId);
+        }
+
         partial void CheckFocus(long now)
         {
             if (NativeInputOnly || paused || systemBlocked)
@@ -301,8 +323,7 @@ namespace Gamepad
             if (sample != null && sample.Generation == focusGeneration && now >= requestAfter &&
                 sample.Window == Win.GetForegroundWindow())
             {
-                if (!watch && eligible && sample.Editable && sample.Window == requestedWindow &&
-                    (!requestedPoint.HasValue || sample.Bounds.Contains(requestedPoint.Value)))
+                if (!watch && eligible && sample.Editable && MatchesFocusRequest(sample))
                 {
                     OpenKeyboard(sample.Bounds, sample.Password ? "English" : Config.StartLayout);
                     focusGeneration++;

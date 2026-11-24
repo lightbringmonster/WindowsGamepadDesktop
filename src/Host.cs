@@ -203,19 +203,8 @@ namespace Gamepad
             observed = hwnd;
             if (!Win.IsShellMenu(hwnd))
                 lastApp = hwnd;
-            int pid;
-            Win.GetWindowThreadProcessId(hwnd, out pid);
-            string name = "";
-            try
-            {
-                using (var p = Process.GetProcessById(pid)) name = p.ProcessName + ".exe";
-            }
-            catch (ArgumentException)
-            {
-            }
-            catch (InvalidOperationException)
-            {
-            }
+            string processName = Win.ProcessNameOf(hwnd);
+            string name = processName.Length == 0 ? "" : processName + ".exe";
             firstRule = false;
             bool protect = ApplicationProfiles.Matches(name, Config.MultiplayerApps);
             // Foreground protection is separate from the user's ordinary mode and lock.

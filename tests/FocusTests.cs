@@ -28,6 +28,15 @@ namespace Gamepad
             engine.Tick(Pad("RB"), p, 590);
             engine.Tick(Pad(), p, 610);
             Check(cap.Events.Count == 0, "aborted chord suppresses both singles");
+            Check(Host.IsStartSearchHandoff("StartMenuExperienceHost", "SearchHost", "SearchTextBox") &&
+                  Host.IsStartSearchHandoff("StartMenuExperienceHost", "SearchApp", "SearchTextBox"),
+                  "start menu can hand an intentional click to Windows Search");
+
+            Check(!Host.IsStartSearchHandoff("chrome", "SearchHost", "SearchTextBox") &&
+                  !Host.IsStartSearchHandoff("StartMenuExperienceHost", "msedge", "SearchTextBox") &&
+                  !Host.IsStartSearchHandoff("StartMenuExperienceHost", "SearchHost", "UnrelatedInput"),
+                  "other foreground handoffs remain outside the search exception");
+
             string invalid = "{\"Version\":99}";
             bool rejected = false;
             try

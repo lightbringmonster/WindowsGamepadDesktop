@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 namespace Gamepad
 {
@@ -36,6 +37,27 @@ namespace Gamepad
         internal static extern bool IsWindow(IntPtr hwnd);
         [DllImport("user32.dll")]
         internal static extern uint GetWindowThreadProcessId(IntPtr hwnd, out int pid);
+        internal static string ProcessNameOf(IntPtr window)
+        {
+            int pid;
+            GetWindowThreadProcessId(window, out pid);
+            if (pid == 0)
+                return "";
+            try
+            {
+                using (var process = Process.GetProcessById(pid))
+                    return process.ProcessName;
+            }
+            catch (ArgumentException)
+            {
+                return "";
+            }
+            catch (InvalidOperationException)
+            {
+                return "";
+            }
+        }
+
         [DllImport("user32.dll")]
         internal static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint key);
         [DllImport("user32.dll")]
