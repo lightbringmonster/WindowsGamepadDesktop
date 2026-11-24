@@ -15,7 +15,6 @@ namespace Gamepad
         internal Settings Config;
         internal readonly Dictionary<string, ControllerState> States = new Dictionary<string, ControllerState>();
         readonly Stopwatch clock = Stopwatch.StartNew();
-        readonly Timer timer = new Timer();
         readonly KeyboardModel model;
         readonly KeyboardWindow keyboard;
         readonly NotifyIcon tray = new NotifyIcon();
@@ -58,9 +57,6 @@ namespace Gamepad
             tray.DoubleClick += (s, e) => ShowSettings();
             tray.Visible = true;
             InitializeSystem();
-            timer.Interval = 16;
-            timer.Tick += (s, e) => Tick();
-            timer.Start();
             if (openSettings)
                 ShowSettings();
         }
@@ -207,6 +203,8 @@ namespace Gamepad
         }
         void Tick()
         {
+            if (closing)
+                return;
             long now = clock.ElapsedMilliseconds;
             IntPtr fg = Win.GetForegroundWindow();
             if (keyboard.Visible && (fg != target || !Win.IsWindow(target)))
@@ -227,12 +225,12 @@ namespace Gamepad
                 selected = id;
                 CloseKeyboard();
             }
-            if (id != null && fg != IntPtr.Zero && !SessionBlocked)
+            if (id != null && !SessionBlocked)
                 engine.Tick(States[id], Config.For(id), now);
             else
                 engine.Reset();
             CheckFocus(now);
-            timer.Interval = id == null ? (keyboard.Visible ? 100 : 250) : 15;
+            messages.SetPollInterval(id == null ? (keyboard.Visible ? 100 : 250) : 15);
         }
         internal void Apply(Settings next)
         {
@@ -264,14 +262,12 @@ namespace Gamepad
             if (closing)
                 return;
             closing = true;
-            timer.Stop();
             CloseKeyboard();
             engine.Reset();
             StopSystem();
             tray.Visible = false;
             tray.Dispose();
             menu.Dispose();
-            timer.Dispose();
             keyboard.Dispose();
             base.ExitThreadCore();
         }
