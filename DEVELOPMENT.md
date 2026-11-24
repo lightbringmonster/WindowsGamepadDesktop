@@ -1,5 +1,7 @@
 # 开发与构建
 
+[文档首页](README.md) · **简体中文** · [English](DEVELOPMENT.en.md)
+
 版本 0.9.4，Windows 11 x64 便携版。发布目录同时包含产品源码、测试源码、离线数据和可执行文件。开发和测试使用 Dell G15 5520，Windows 11 Pro build 26300。
 
 ## 从源码构建

@@ -1,6 +1,25 @@
 # Windows Gamepad Desktop
 
+**简体中文** · [English](README.en.md)
+
+Control the Windows 11 desktop and type with an XInput gamepad. [Read the English guide](README.en.md).
+
 Windows 11 x64 手柄桌面控制器。使用 Xbox 字母标记，桌面与屏幕键盘采用 **B 确认、A 返回**。程序默认使用普通用户权限，运行时完全离线。
+
+![Windows Gamepad Desktop 拼音键盘，显示整句候选与手柄按键提示](docs/images/keyboard-pinyin.png)
+
+## 从源码构建
+
+需要 Windows 11 x64，使用系统自带的 .NET Framework 4.8 系列编译器。构建无需安装 .NET SDK、NuGet 或 Node.js。
+
+```powershell
+git clone https://github.com/lightbringmonster/WindowsGamepadDesktop.git
+cd WindowsGamepadDesktop
+.\build.ps1 -Test
+.\bin\WindowsGamepadDesktop.exe --settings
+```
+
+构建产物在 `bin`。如需移动到其他位置，复制整个 `bin`，让 EXE 与 `data` 文件夹保持同级。
 
 ## 开始使用
 
@@ -57,12 +76,16 @@ XInput 允许多个程序读取同一手柄。本程序在原生模式停止合�
 
 Windows 的权限隔离、UAC 安全桌面和锁屏会限制输入，普通权限程序对更高权限窗口的 SendInput 也可能失败。程序不使用驱动、不独占硬件，不修改固件和板载配置。真正的双人游戏、震动与当前机型的物理操作验收状态见 [测试记录](TESTING.md)。
 
-## 文件
+## 文档
 
 - [测试记录及手柄验收步骤](TESTING.md)
 - [模块与运行流程](ARCHITECTURE.md)
 - [构建、运行和阶段记录](DEVELOPMENT.md)
 - [新增设备及体感扩展](HARDWARE_EXTENSION.md)
 - [第三方依赖与许可证](THIRD_PARTY.md)
+
+## 开源许可
+
+项目自主编写的源码、界面和文档使用 [MIT 许可证](LICENSE)。随附的 Rime 朙月拼音词库保留原上游许可和署名。具体文件及对应许可见 [第三方说明](THIRD_PARTY.md)。
 
 系统输入的权限边界及槽位模型可查阅微软文档。[SendInput](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput) · [XInput](https://learn.microsoft.com/en-us/windows/win32/xinput/getting-started-with-xinput)

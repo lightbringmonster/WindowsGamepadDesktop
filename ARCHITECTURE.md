@@ -1,5 +1,7 @@
 # 架构
 
+[文档首页](README.md) · **简体中文** · [English](ARCHITECTURE.en.md)
+
 应用采用 C#、.NET Framework 4.8 系列及 WinForms。键盘按目标屏幕物理像素绘制，使用 PerMonitorV2 清单。WinForms 适合托盘消息窗口、非激活顶层窗和本机离线构建。产品没有浏览器内核、Node 进程或 NuGet 运行依赖。
 
 | 层 | 源码 | 职责 |
