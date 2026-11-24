@@ -21,6 +21,12 @@ Tests were performed on 2026-11-24. The environment was a Dell G15 5520 with Win
 
 Windows tests send characters only while the intended test window has focus. The test may stop when the window is covered by another program. The test program briefly uses the mouse and attempts to restore the mouse position and foreground window when finished. The product does not include these test entry points.
 
+## 0.9.5 Browser focus and mode feedback
+
+65 core checks and 37 Windows integration checks passed. In isolated Chrome and Edge profiles, clicking the new-tab button or using a binding for Ctrl + T left the keyboard closed when the address bar gained focus. Clicking the address bar or a webpage text field still opened the keyboard. Windows Search and File Explorer edit-field tests also passed.
+
+The release prompt appeared at two seconds while preserving the foreground window and current mode. Releasing switched modes and displayed the confirmation. Three-second locking, unlocking, and full-screen switching remained covered.
+
 ## 0.9.4 Continuous Pinyin and Keyboard Styles
 
 62 core checks and 34 Windows integration checks passed. Coverage included continuous composition of complete Pinyin, segmented candidates retaining the remaining Pinyin, the syllable separator, candidate paging, and the existing single-character path. In a separate Windows edit box, a simulated gamepad was used to spell nihaoshijie. Pressing Y committed “你好世界” at once, and the original target retained focus. The actual rendering of the Pinyin and English layouts was checked, and the Pinyin preview displayed “你好欢迎使用” in full.

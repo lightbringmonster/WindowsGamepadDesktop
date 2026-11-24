@@ -12,15 +12,30 @@ namespace Gamepad
             var returning = new Capture();
             var returnEngine = new MappingEngine(returning);
             var profile = new Profile();
-            int focusRequests = 0;
-            returnEngine.Interaction = () => focusRequests++;
+            var pointerChanges = new List<bool>();
+            returnEngine.Ledger.LeftButtonChanged = pointerChanges.Add;
             returnEngine.Tick(Pad(), profile, 0);
             returnEngine.Tick(Pad("A"), profile, 32);
             returnEngine.Tick(Pad(), profile, 64);
-            Check(focusRequests == 0 && returning.Events.SequenceEqual(new[] { "K27True", "K27False" }),
-                  "desktop Escape releases normally and does not request the keyboard");
+            Check(returning.Events.SequenceEqual(new[] { "K27True", "K27False" }),
+                  "desktop Escape still sends both key transitions");
             returnEngine.Tick(Pad("B"), profile, 96);
-            Check(focusRequests == 1, "desktop click still requests editable focus sampling");
+            var trigger = Pad();
+            trigger.RT = 1;
+            returnEngine.Tick(trigger, profile, 112);
+            returnEngine.Tick(Pad(), profile, 128);
+            Check(pointerChanges.SequenceEqual(new[] { true, false }),
+                  "shared left button reports one completed simulated click");
+            returnEngine.Tick(Pad("B"), profile, 152);
+            returnEngine.Reset();
+            Check(pointerChanges.SequenceEqual(new[] { true, false, true }),
+                  "forced mouse release does not complete a focus click");
+            Check(new[] { "Key:Tab", "Key:Shift+Tab", "Key:Ctrl+L", "Key:Ctrl+F" }
+                      .All(action => Host.IsFocusNavigation(KeyBinding.Parse(action))),
+                  "explicit focus navigation stays eligible");
+            Check(new[] { "Key:Escape", "Key:Ctrl+T", "Key:Alt+Tab", "Key:Enter", "Key:Up" }
+                      .All(action => !Host.IsFocusNavigation(KeyBinding.Parse(action))),
+                  "tab creation and unrelated desktop shortcuts do not request the keyboard");
 
             var rules = new ApplicationProfiles();
             var apps = new[] { "room.exe" };

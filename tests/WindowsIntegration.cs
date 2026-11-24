@@ -27,6 +27,7 @@ namespace Gamepad
             StartPosition = FormStartPosition.CenterScreen;
             ClientSize = new Size(460, 245);
             Controls.AddRange(new Control[] { edit, password, readOnly, other });
+            other.Click += (sender, args) => edit.Focus();
             Shown += (s, e) =>
             {
                 Activate();
@@ -212,10 +213,19 @@ namespace Gamepad
                         String.Join(",", focused.GetSupportedPatterns().Select(p => p.ProgrammaticName)));
                     Check(info.Editable && !info.Password && !info.Bounds.IsEmpty,
                           "cross-process editable UIA + geometry");
+                    var nonEdit = new Point(74, 30);
+                    ClientToScreen(w, ref nonEdit);
+                    Cursor.Position = nonEdit;
+                    Pump(100);
+                    Hit(pad, "B");
+                    Pump(650);
+                    Check(FocusDetection.Inspect().Editable && !Shown(),
+                          "click outside the edit does not open the keyboard when it gains focus indirectly");
                     Cursor.Position = new Point(info.Bounds.Left + 10, info.Bounds.Top + 8);
                     Pump(120);
                     Hit(pad, "B");
                     Await(Shown, "pad mouse click opens keyboard via UIA", 3000);
+                    Pump(80);
                     Check(Win.GetForegroundWindow() == w, "overlay preserves target focus");
                     Hit(pad, "B");
                     Check(SendMessage(w, 0x8011, IntPtr.Zero, IntPtr.Zero).ToInt32() == 1,
@@ -304,10 +314,14 @@ namespace Gamepad
                     Hit(pad, "B");
                     Check((GetAsyncKeyState(1) & 0x8000) == 0, "game profile sends no native mouse press");
                     pad.State = Pad("LB", "RB");
-                    Pump(2150);
+                    Await(() => IsWindowVisible(FindWindow(null, "松开切换 · 桌面键鼠")),
+                          "holding for two seconds displays the release prompt", 2850);
+                    Check(host.ModeName == "原生手柄" && Win.GetForegroundWindow() == w,
+                          "release prompt keeps the previous mode and foreground window");
                     pad.State = Pad();
-                    Pump(100);
-                    Check(host.ModeName == "桌面键鼠", "long chord switches out of native mode");
+                    Await(() => host.ModeName == "桌面键鼠" &&
+                          IsWindowVisible(FindWindow(null, "已切换 · 桌面键鼠")),
+                          "release switches mode and confirms it on screen", 1000);
                     Check(host.HotkeyAvailable, "emergency hotkey registered");
                     new InputLedger(new GuardedSink(w)).Tap(KeyBinding.Parse("Key:Ctrl+Alt+F12"));
                     Pump(160);

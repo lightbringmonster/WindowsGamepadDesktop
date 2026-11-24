@@ -22,8 +22,8 @@ The build writes to `bin`. To move the app, keep the executable and its sibling 
 ## Getting started
 
 1. Connect an XInput-compatible controller. For a Beitong controller, select PC/XInput mode and connect via the receiver or USB. **设备** (Devices) shows the slot and live input values. Windows may identify the device as an Xbox 360-compatible controller.
-2. Release all controls, then use the left stick to move the pointer. Press B to click. A recent gamepad click on a supported edit field can open the keyboard automatically. RB opens it manually.
-3. Hold LB + RB, then release between two and three seconds to switch between desktop and native gamepad mode. Hold for three seconds to lock or unlock the current mode. This works in windowed and full-screen applications.
+2. Release all controls, then use the left stick to move the pointer. Press B to click. A direct gamepad click on a supported edit field can open the keyboard automatically. RB opens it manually.
+3. Hold LB + RB, then release between two and three seconds to switch between desktop and native gamepad mode. At two seconds, a prompt tells you to release. The confirmation appears after the switch. Hold for three seconds to lock or unlock the current mode. This works in windowed and full-screen applications.
 4. In **应用规则** (App Rules), add a game's executable name to enable native mode when it becomes active. The default list includes `Playnite.FullscreenApp.exe`. When unlocked, leaving a matched app restores desktop mode and returning to it enables native mode again.
 5. To start at sign-in, enable **登录时自启动** in the notification area menu. Keep the app in its permanent location. Re-enable this option if you move it.
 
@@ -56,7 +56,7 @@ Use the D-pad or left stick to highlight a key. B selects, A closes, X deletes, 
 - **System IME** sends virtual keys to the active Windows input method. Candidate selection and paging depend on that IME.
 - **Editing** includes navigation, selection, clipboard shortcuts, undo, redo, Tab, and Enter.
 
-The keyboard opens on the target display by default and moves out of the way of the edit field when there is room. Auto-open requires both a recent gamepad action and an editable control exposed through Windows UI Automation. Use RB for unsupported controls. Password fields open the English layout. The app does not read field values, store typed text, or read the clipboard.
+The keyboard opens on the target display by default and moves out of the way of the edit field when there is room. Auto-open checks that the gamepad click landed inside the focused editable field. Gamepad bindings for Tab, Shift + Tab, Ctrl + L, and Ctrl + F can also open it. The browser giving its address bar focus when opening or switching tabs leaves the keyboard closed. Use RB for unsupported controls. Password fields open the English layout. The app does not read field values, store typed text, or read the clipboard.
 
 ## Controllers and settings
 
@@ -83,6 +83,10 @@ Normal Windows permissions apply. Elevated windows, the UAC secure desktop, and 
 | Testing and hardware verification | [Testing](TESTING.en.md) | [测试记录](TESTING.md) |
 | Hardware providers | [Hardware extensions](HARDWARE_EXTENSION.en.md) | [硬件扩展](HARDWARE_EXTENSION.md) |
 | Dependencies and notices | [Third-party notices](THIRD_PARTY.en.md) | [第三方说明](THIRD_PARTY.md) |
+
+## Contributors
+
+- **Codex** · Implementation and testing
 
 ## License
 

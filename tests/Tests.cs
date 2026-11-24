@@ -84,9 +84,9 @@ namespace Gamepad
                 ElectronChecks(args[1], args[2]);
                 return;
             }
-            if (args.Length == 2 && args[0] == "--browser")
+            if ((args.Length == 2 || args.Length == 3) && args[0] == "--browser")
             {
-                BrowserChecks(args[1]);
+                BrowserChecks(args[1], args.Length == 3 ? args[2] : null);
                 return;
             }
             if (args.Length == 2 && args[0] == "--defaults")

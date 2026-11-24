@@ -2,7 +2,7 @@
 
 [Documentation home](README.en.md) · [简体中文](DEVELOPMENT.md) · **English**
 
-Version 0.9.4, Windows 11 x64 portable edition. The release directory contains product source, test source, offline data, and the executable. Development and testing use a Dell G15 5520, Windows 11 Pro build 26300.
+Version 0.9.5, Windows 11 x64 portable edition. The release directory contains product source, test source, offline data, and the executable. Development and testing use a Dell G15 5520, Windows 11 Pro build 26300.
 
 ## Building from Source
 
@@ -37,6 +37,10 @@ Windows 11 has a native touch keyboard with gamepad navigation, X to delete, and
 | 8 Flydigi-specific work | Delivered only the capability model, extension interfaces, simulated-axis validation, and integration documentation, pending physical hardware and protocol evidence. |
 
 The reference repository's file-location list was extracted read-only by DeepSeek Harness, and the coordinator reviewed the license, project files, and concrete implementation. The headless configuration declared the model deepseek-flash. Run events included thinking output and did not provide a named thinking-effort level.
+
+## 0.9.5
+
+The keyboard opens automatically after a completed click inside an editable control or an explicit focus shortcut. Dragging, canceled clicks, and indirect focus changes during browser tab navigation leave the keyboard closed. The mode chord shows a release prompt as soon as it reaches two seconds.
 
 ## 0.9.4
 

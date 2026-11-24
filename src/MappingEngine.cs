@@ -7,7 +7,9 @@ namespace Gamepad
     {
         readonly IInputSink sink;
         public readonly InputLedger Ledger;
-        public Action ToggleMode, ToggleModeLock, ToggleKeyboard, Interaction;
+        public Action ToggleMode, ToggleModeLock, ToggleKeyboard;
+        internal Action<int[]> MappedAction;
+        internal Action ModeSwitchReady;
         public Action<string> KeyboardCommand;
         public bool Game { get; private set; }
         public bool Paused { get; private set; }
@@ -63,7 +65,9 @@ namespace Gamepad
             Trigger(down, "RT", state.RT, ref rt);
             // Sample the mode chord independently of the active mapping and the overlay's focus.
             var gesture = modeGesture.Sample(p.ModeChord, down, now);
-            if (gesture == ModeGestureAction.ToggleLock && ToggleModeLock != null)
+            if (gesture == ModeGestureAction.ReadyToSwitch && ModeSwitchReady != null)
+                ModeSwitchReady();
+            else if (gesture == ModeGestureAction.ToggleLock && ToggleModeLock != null)
                 ToggleModeLock();
             else if (gesture == ModeGestureAction.SwitchMode && ToggleMode != null)
                 ToggleMode();
@@ -149,9 +153,8 @@ namespace Gamepad
                 int[] keys = Tokens(action);
                 if (keys == null)
                     continue;
-                // Escape dismisses UI even when the same editable field keeps focus.
-                if (edge && Interaction != null && keys[keys.Length - 1] != (int)System.Windows.Forms.Keys.Escape)
-                    Interaction();
+                if (edge && MappedAction != null)
+                    MappedAction(keys);
                 if (deferred)
                 {
                     if (edge)
