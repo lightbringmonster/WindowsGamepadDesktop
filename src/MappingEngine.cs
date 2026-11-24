@@ -7,15 +7,16 @@ namespace Gamepad
     {
         readonly IInputSink sink;
         public readonly InputLedger Ledger;
-        public Action ToggleMode, ToggleKeyboard, Interaction;
+        public Action ToggleMode, ToggleModeLock, ToggleKeyboard, Interaction;
         public Action<string> KeyboardCommand;
         public bool Game { get; private set; }
         public bool Paused { get; private set; }
         public bool Overlay { get; private set; }
         HashSet<string> prior = new HashSet<string>();
         readonly Dictionary<string, long> repeats = new Dictionary<string, long>();
-        bool neutral = true, chordConsumed, lt, rt;
-        long chordAt = -1, previousTime = -1;
+        readonly ModeGesture modeGesture = new ModeGesture();
+        bool neutral = true, lt, rt;
+        long previousTime = -1;
         double mx, my, wx, wy;
         public MappingEngine(IInputSink output)
         {
@@ -24,12 +25,15 @@ namespace Gamepad
         }
         public void Reset()
         {
+            modeGesture.Reset();
+            ResetMapping();
+        }
+        void ResetMapping()
+        {
             Ledger.Release();
             prior.Clear();
             repeats.Clear();
             neutral = true;
-            chordConsumed = false;
-            chordAt = -1;
             previousTime = -1;
             mx = my = wx = wy = 0;
             lt = rt = false;
@@ -39,7 +43,7 @@ namespace Gamepad
             Game = game;
             Paused = paused;
             Overlay = overlay;
-            Reset();
+            ResetMapping();
         }
         static void Trigger(HashSet<string> set, string id, double value, ref bool latched)
         {
@@ -57,6 +61,13 @@ namespace Gamepad
             var down = new HashSet<string>(state.Buttons);
             Trigger(down, "LT", state.LT, ref lt);
             Trigger(down, "RT", state.RT, ref rt);
+            // Sample the mode chord independently of the active mapping and the overlay's focus.
+            var gesture = modeGesture.Sample(p.ModeChord, down, now);
+            if (gesture == ModeGestureAction.ToggleLock && ToggleModeLock != null)
+                ToggleModeLock();
+            else if (gesture == ModeGestureAction.SwitchMode && ToggleMode != null)
+                ToggleMode();
+
             if (Overlay)
             {
                 AddNav(down, state.LX, state.LY, Get(p.Keyboard, "LeftStick"));
@@ -75,39 +86,18 @@ namespace Gamepad
                           state.ExtraAxes.Values.Any(a => Math.Max(Math.Abs(a.X), Math.Abs(a.Y)) > p.DeadZone);
                 return;
             }
-            var chord = p.ModeChord.Split('+');
-            bool both = chord.All(down.Contains);
-            if (both)
-            {
-                if (chordAt < 0)
-                    chordAt = now;
-                if (!chordConsumed && now - chordAt >= 1000)
-                {
-                    chordConsumed = true;
-                    if (ToggleMode != null)
-                        ToggleMode();
-                    return;
-                }
-            }
-            bool overlapped = chordAt >= 0 || chordConsumed;
-            if (!both && chordAt >= 0)
-            {
-                chordConsumed = true;
-                chordAt = -1;
-            }
             if (Paused || Game)
             {
                 Ledger.Release();
                 if (!Paused &&
-                    down.Any(k => !prior.Contains(k) && !chord.Contains(k) && Get(p.Desktop, k) == "Mode"))
+                    down.Any(k => !prior.Contains(k) && !modeGesture.Contains(k) && Get(p.Desktop, k) == "Mode"))
                 {
                     if (ToggleMode != null)
                         ToggleMode();
-                    return;
+                    if (neutral)
+                        return;
                 }
                 prior = down;
-                if (!down.Overlaps(chord))
-                    chordConsumed = false;
                 return;
             }
             var wanted = new List<int>();
@@ -117,8 +107,8 @@ namespace Gamepad
             {
                 if (Profile.IsAxis(id))
                     continue;
-                bool isDown = down.Contains(id), was = prior.Contains(id), deferred = chord.Contains(id);
-                bool edge = deferred ? (was && !isDown && !overlapped) : (isDown && !was);
+                bool isDown = down.Contains(id), was = prior.Contains(id), deferred = modeGesture.Contains(id);
+                bool edge = deferred ? (was && !isDown && !modeGesture.SuppressSingles) : (isDown && !was);
                 string action = id.StartsWith("@") ? id.Substring(1) : Get(mapping, id);
                 if (!isDown)
                     repeats.Remove(id);
@@ -126,7 +116,9 @@ namespace Gamepad
                 {
                     if (ToggleMode != null)
                         ToggleMode();
-                    return;
+                    if (neutral)
+                        return;
+                    continue;
                 }
                 if (Overlay)
                 {
@@ -182,8 +174,6 @@ namespace Gamepad
                     Axis(axis.Value.X, axis.Value.Y, Get(mapping, axis.Key), p, dt, precise);
             }
             prior = down;
-            if (!down.Overlaps(chord))
-                chordConsumed = false;
         }
         static string Get(Dictionary<string, string> map, string id)
         {

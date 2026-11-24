@@ -50,6 +50,13 @@ namespace Gamepad
                 m.Result = (IntPtr)(edit.Text == ("q你好") ? 2 : edit.Text == "q" ? 1 : 0);
                 return;
             }
+            if (m.Msg == 0x8012)
+            {
+                FormBorderStyle = FormBorderStyle.None;
+                Bounds = Screen.FromControl(this).Bounds;
+                m.Result = (IntPtr)(Bounds == Screen.FromControl(this).Bounds ? 1 : 0);
+                return;
+            }
             base.WndProc(ref m);
         }
     }
@@ -138,6 +145,13 @@ namespace Gamepad
                 Guard();
                 native.Wheel(x, y);
             }
+        }
+        static void HoldModeChord(SimDevice pad, int duration)
+        {
+            pad.State = Pad("LB", "RB");
+            Pump(duration);
+            pad.State = Pad();
+            Pump(110);
         }
         static void WindowsChecks()
         {
@@ -283,13 +297,14 @@ namespace Gamepad
                     host.ExitThread();
                     pad.State = Pad();
                     cfg.GameApps = new[] { fixture.ProcessName + ".exe" };
+                    cfg.For(pad.Id).Desktop["RS"] = "Mode";
                     host = new Host(cfg, provider, new GuardedSink(w), false);
                     Await(() => host.ModeName == "原生手柄", "foreground rule enters native mode on Windows",
                           1500);
                     Hit(pad, "B");
                     Check((GetAsyncKeyState(1) & 0x8000) == 0, "game profile sends no native mouse press");
                     pad.State = Pad("LB", "RB");
-                    Pump(1120);
+                    Pump(2150);
                     pad.State = Pad();
                     Pump(100);
                     Check(host.ModeName == "桌面键鼠", "long chord switches out of native mode");
@@ -301,10 +316,23 @@ namespace Gamepad
                     pad.State = Pad();
                     Pump(100);
                     pad.State = Pad("LB", "RB");
-                    Pump(1120);
+                    Pump(2150);
                     pad.State = Pad();
                     Pump(90);
                     Check(host.ModeName == "原生手柄", "long chord enters native mode");
+                    Check(SendMessage(w, 0x8012, IntPtr.Zero, IntPtr.Zero).ToInt32() == 1 &&
+                          Win.GetForegroundWindow() == w, "foreground fixture covers the full display");
+                    HoldModeChord(pad, 2150);
+                    Check(host.ModeName == "桌面键鼠", "full-screen foreground can switch to desktop");
+                    HoldModeChord(pad, 3150);
+                    Check(host.ModeName == "桌面键鼠 · 已锁定", "full-screen long hold locks current mode");
+                    Hit(pad, "RS");
+                    HoldModeChord(pad, 2150);
+                    Check(host.ModeName == "桌面键鼠 · 已锁定", "lock rejects short chord and custom mode binding");
+                    HoldModeChord(pad, 3150);
+                    Check(host.ModeName == "桌面键鼠", "long hold unlocks without changing mode");
+                    HoldModeChord(pad, 2150);
+                    Check(host.ModeName == "原生手柄", "unlocked full-screen foreground switches back to native");
                     fixture.CloseMainWindow();
                     fixture.WaitForExit(1800);
                     Pump(300);

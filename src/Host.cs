@@ -21,7 +21,7 @@ namespace Gamepad
         readonly ContextMenuStrip menu = new ContextMenuStrip();
         string selected;
         long nextScan;
-        bool paused, game, closing;
+        bool paused, game, modeLocked, closing;
         IntPtr target, observed, lastApp;
         readonly ApplicationProfiles policy = new ApplicationProfiles();
         bool firstRule = true;
@@ -32,6 +32,7 @@ namespace Gamepad
             manager = new DeviceManager(provider);
             engine = new MappingEngine(sink);
             engine.ToggleMode = ToggleGame;
+            engine.ToggleModeLock = ToggleModeLock;
             engine.ToggleKeyboard = ToggleKeyboard;
             engine.Interaction = () => OnInteraction();
             engine.KeyboardCommand = Command;
@@ -75,7 +76,8 @@ namespace Gamepad
         internal string ModeName
         {
             get {
-                return paused ? "已暂停" : game ? "原生手柄" : "桌面键鼠";
+                string status = paused ? "已暂停" : game ? "原生手柄" : "桌面键鼠";
+                return modeLocked ? status + " · 已锁定" : status;
             }
         }
         void Menu()
@@ -83,7 +85,7 @@ namespace Gamepad
             menu.Items.Clear();
             var status = menu.Items.Add("当前模式  ·  " + ModeName);
             status.Enabled = false;
-            menu.Items.Add("切换控制模式", null, (s, e) => ToggleGame());
+            menu.Items.Add("切换控制模式", null, (s, e) => ToggleGame()).Enabled = !modeLocked;
             menu.Items.Add("呼出虚拟键盘", null, (s, e) => RequestTrayKeyboard()).Enabled = !game && !paused;
             menu.Items.Add("设置", null, (s, e) => ShowSettings());
             var pause = new ToolStripMenuItem("暂停映射", null, (s, e) => Pause(!paused));
@@ -161,9 +163,14 @@ namespace Gamepad
         {
             SetGame(!game);
         }
+        void ToggleModeLock()
+        {
+            modeLocked = !modeLocked;
+            Notify(modeLocked ? ModeName : ModeName + " · 已解锁");
+        }
         void SetGame(bool value)
         {
-            if (game == value)
+            if (modeLocked || game == value)
                 return;
             game = value;
             CloseKeyboard();
@@ -223,6 +230,7 @@ namespace Gamepad
             if (id != selected)
             {
                 selected = id;
+                engine.Reset();
                 CloseKeyboard();
             }
             if (id != null && !SessionBlocked)
