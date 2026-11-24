@@ -21,6 +21,20 @@ Tests were performed on 2026-11-24. The environment was a Dell G15 5520 with Win
 
 Windows tests send characters only while the intended test window has focus. The test may stop when the window is covered by another program. The test program briefly uses the mouse and attempts to restore the mouse position and foreground window when finished. The product does not include these test entry points.
 
+## 0.9.10 Stick navigation and Windows focus
+
+83 core checks passed. A physical test of 0.9.9 captured a native left-stick-right event while the on-screen keyboard was visible. Windows Search stayed in the foreground when the keyboard closed. Interactive tests of 0.9.10 confirmed Start's mapped mouse movement, stable desktop focus, stick selection of W, and D-pad selection of Q. The keyboard remained visible through a two-second wait.
+
+## 0.9.9 Physical B conflicts and Search placement
+
+81 core checks passed. The hardware trace recorded VK_GAMEPAD_B from Windows while Start and Search were active. The interactive regression sent this native Back event and the app's simulated B input together. The first press opened the keyboard, and the second selected a character while Search retained its foreground focus. The displayed keyboard rectangle was clear of the entire Search panel. The direct Windows Search auto-open regression also passed.
+
+## 0.9.8 Start menu search
+
+79 core checks passed. On Windows 11, clicking the Start menu search field transferred focus from StartMenuExperienceHost to SearchHost's SearchTextBox. The previous build left the on-screen keyboard closed. The same simulated B press on the fixed build opened the keyboard and kept the search field focused. Regression tests cover unrelated processes and controls. Windows Search and Microsoft Edge tests also passed. Clicking an edit field opens the keyboard, while opening a browser tab leaves it closed.
+
+In a physical-controller check, the user opened the taskbar hidden-icons panel in native gamepad mode and pressed B. The panel closed. Native mode pauses this app's keyboard and mouse output, so Windows can dismiss the panel in response to the controller itself.
+
 ## 0.9.7 Two controllers and local multiplayer protection
 
 77 core checks and 18 dual-controller checks passed. Simultaneous input from two simulated controllers produced only the primary's desktop action, and the secondary did not take over on disconnect. The cross-process foreground test covered entering protection from locked desktop mode, releasing a held mouse button, keeping the on-screen keyboard closed, and restoring the lock on exit. A held button had to return to neutral before it could trigger another action. The settings preview and import of older profiles also passed. Player assignment remains specific to each game.

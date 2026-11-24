@@ -68,6 +68,20 @@ namespace Gamepad
             var target = new Rectangle(-1000, 800, 150, 40);
             var pos = KeyboardWindow.Place(new Rectangle(-1920, 0, 1920, 1080), target, 41);
             Check(pos.Left < 0 && !pos.IntersectsWith(target), "multi-monitor placement avoids edited control");
+            var largeWork = new Rectangle(0, 0, 2560, 1380);
+            var searchPanel = new Rectangle(743, 267, 1073, 1113);
+            var searchField = new Rectangle(799, 303, 961, 40);
+            var docked = KeyboardWindow.Place(largeWork, searchField, 41, searchPanel);
+            Check(!docked.IsEmpty && largeWork.Contains(docked) && !docked.IntersectsWith(searchPanel) &&
+                  docked.Bottom < searchPanel.Top && docked.Width >= 2000,
+                  "1440p search keeps a wide keyboard clear of the whole panel");
+
+            var smallerWork = new Rectangle(-1920, 0, 1920, 1040);
+            var tallSearch = new Rectangle(-1540, 120, 1160, 920);
+            var side = KeyboardWindow.Place(smallerWork, new Rectangle(-1500, 145, 900, 36), 41, tallSearch);
+            Check(!side.IsEmpty && smallerWork.Contains(side) && !side.IntersectsWith(tallSearch),
+                  "search can use a side strip when the top band is too short");
+
             MoreFocus();
         }
         static void TypeReading(KeyboardModel model, string reading)

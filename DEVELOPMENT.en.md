@@ -2,7 +2,7 @@
 
 [Documentation home](README.en.md) · [简体中文](DEVELOPMENT.md) · **English**
 
-Version 0.9.7, Windows 11 x64 portable edition. The release directory contains product source, test source, offline data, and the executable. Development and testing use a Dell G15 5520, Windows 11 Pro build 26300.
+Version 0.9.10, Windows 11 x64 portable edition. The release directory contains product source, test source, offline data, and the executable. Development and testing use a Dell G15 5520, Windows 11 Pro build 26300.
 
 ## Building from Source
 
@@ -37,6 +37,18 @@ Windows 11 has a native touch keyboard with gamepad navigation, X to delete, and
 | 8 Flydigi-specific work | Delivered only the capability model, extension interfaces, simulated-axis validation, and integration documentation, pending physical hardware and protocol evidence. |
 
 The reference repository's file-location list was extracted read-only by DeepSeek Harness, and the coordinator reviewed the license, project files, and concrete implementation. The headless configuration declared the model deepseek-flash. Run events included thinking output and did not provide a named thinking-effort level.
+
+## 0.9.10
+
+In the Windows desktop, Start menu, and supported system panels, sticks mapped to mouse or scroll actions emit those actions alone. While the on-screen keyboard is visible, native stick and D-pad direction events are consumed so that the controls behind it keep their focus.
+
+## 0.9.9
+
+Windows can deliver a native Back event for the physical B button. When desktop mode maps B to Confirm, the app consumes that specific virtual key in recognized Windows panels and lets the existing mapping handle the controller input. The same rule applies when B selects a key in the on-screen keyboard. The keyboard positions itself outside the full Windows Search panel, which can sit above normal topmost windows.
+
+## 0.9.8
+
+Fixed the on-screen keyboard failing to open when a click on the Start menu search field transfers focus to Windows Search. The app verifies the click position and focused control. Both README files use general Xbox and XInput setup instructions.
 
 ## 0.9.7
 

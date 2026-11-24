@@ -124,6 +124,33 @@ namespace Gamepad
             get { return game || multiplayerProtected; }
         }
 
+        bool ShouldConsumeShellGamepadKey(int key)
+        {
+            if (closing || paused || systemBlocked || NativeInputOnly || activeDevice == null)
+                return false;
+
+            bool navigation = ShellGamepadKeyFilter.IsNavigationKey(key);
+            var foreground = Win.GetForegroundWindow();
+            if (!Win.IsSystemGamepadSurface(foreground, navigation))
+                return false;
+
+            if (navigation && keyboard.Visible)
+                return foreground == target;
+
+            var profile = Config.For(activeDevice.Id);
+            string action;
+            if (navigation)
+            {
+                string stick = ShellGamepadKeyFilter.StickForNavigationKey(key);
+                return stick != null && profile.Desktop.TryGetValue(stick, out action) &&
+                       (action == "Cursor" || action == "Scroll");
+            }
+
+            var mapping = keyboard.Visible ? profile.Keyboard : profile.Desktop;
+            return mapping.TryGetValue("B", out action) &&
+                   action == (keyboard.Visible ? "Select" : "MouseLeft");
+        }
+
         bool TargetReady()
         {
             return keyboard.Visible && !NativeInputOnly && !paused && target != IntPtr.Zero &&
@@ -203,19 +230,8 @@ namespace Gamepad
             observed = hwnd;
             if (!Win.IsShellMenu(hwnd))
                 lastApp = hwnd;
-            int pid;
-            Win.GetWindowThreadProcessId(hwnd, out pid);
-            string name = "";
-            try
-            {
-                using (var p = Process.GetProcessById(pid)) name = p.ProcessName + ".exe";
-            }
-            catch (ArgumentException)
-            {
-            }
-            catch (InvalidOperationException)
-            {
-            }
+            string processName = Win.ProcessNameOf(hwnd);
+            string name = processName.Length == 0 ? "" : processName + ".exe";
             firstRule = false;
             bool protect = ApplicationProfiles.Matches(name, Config.MultiplayerApps);
             // Foreground protection is separate from the user's ordinary mode and lock.

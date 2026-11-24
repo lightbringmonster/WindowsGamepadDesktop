@@ -6,6 +6,16 @@ namespace Gamepad
     {
         static partial void MoreFocus()
         {
+            Check(new[] { 0xCB, 0xCC, 0xCD, 0xCE, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA }
+                      .All(ShellGamepadKeyFilter.IsNavigationKey) &&
+                  new[] { 0x41, 0xC3, 0xC4, 0xCA, 0xCF, 0xDB }.All(key => !ShellGamepadKeyFilter.IsNavigationKey(key)),
+                  "only native D-pad and stick virtual keys are classified as navigation");
+            Check(ShellGamepadKeyFilter.StickForNavigationKey(0xD3) == "LeftStick" &&
+                  ShellGamepadKeyFilter.StickForNavigationKey(0xD6) == "LeftStick" &&
+                  ShellGamepadKeyFilter.StickForNavigationKey(0xD7) == "RightStick" &&
+                  ShellGamepadKeyFilter.StickForNavigationKey(0xDA) == "RightStick" &&
+                  ShellGamepadKeyFilter.StickForNavigationKey(0xCE) == null,
+                  "desktop can reserve just the stick that is mapped to the pointer or scrolling");
             var cap = new Capture();
             var engine = new MappingEngine(cap);
             var p = new Profile();
@@ -28,6 +38,15 @@ namespace Gamepad
             engine.Tick(Pad("RB"), p, 590);
             engine.Tick(Pad(), p, 610);
             Check(cap.Events.Count == 0, "aborted chord suppresses both singles");
+            Check(Host.IsStartSearchHandoff("StartMenuExperienceHost", "SearchHost", "SearchTextBox") &&
+                  Host.IsStartSearchHandoff("StartMenuExperienceHost", "SearchApp", "SearchTextBox"),
+                  "start menu can hand an intentional click to Windows Search");
+
+            Check(!Host.IsStartSearchHandoff("chrome", "SearchHost", "SearchTextBox") &&
+                  !Host.IsStartSearchHandoff("StartMenuExperienceHost", "msedge", "SearchTextBox") &&
+                  !Host.IsStartSearchHandoff("StartMenuExperienceHost", "SearchHost", "UnrelatedInput"),
+                  "other foreground handoffs remain outside the search exception");
+
             string invalid = "{\"Version\":99}";
             bool rejected = false;
             try
