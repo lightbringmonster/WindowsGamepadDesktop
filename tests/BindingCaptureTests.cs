@@ -62,8 +62,8 @@ namespace Gamepad
                     var grid = Descendants(form).OfType<DataGridView>().Single();
                     start.PerformClick();
                     Check(start.Text == "取消识别", "the mapping page starts identification on the edited device");
-                    Check(Descendants(form).OfType<Label>().Any(label => label.Visible &&
-                              label.Text.Contains("摇杆回中")), "the mapping page displays the identification prompt");
+                    Check(Descendants(form).OfType<Label>().Any(label => label.Visible && label.Bottom <= grid.Top &&
+                              label.Text.Contains("摇杆回中")), "the mapping page reserves room for the identification prompt");
                     Pump(70);
                     Snap(form, Path.Combine(directory, "waiting-for-input.png"));
 

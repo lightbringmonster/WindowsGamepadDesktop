@@ -10,6 +10,7 @@ namespace Gamepad
         static readonly Color Bg = Color.FromArgb(23, 30, 41), Side = Color.FromArgb(31, 41, 54),
                               Field = Color.FromArgb(43, 56, 72), Ink = Color.FromArgb(235, 242, 247),
                               Muted = Color.FromArgb(173, 190, 202), Mint = Color.FromArgb(152, 235, 205);
+        const string IdentifyHint = "识别期间暂停键鼠映射。";
         readonly Host host;
         Settings draft;
         string deviceId;
@@ -29,7 +30,7 @@ namespace Gamepad
         readonly StickView live = new StickView();
         readonly DataGridView grid = new DataGridView();
         readonly Button identifyButton;
-        readonly Label identifyStatus = Caption("");
+        readonly Label identifyStatus = Caption(IdentifyHint);
         readonly TextBox combination = new TextBox(), apps = new TextBox { Multiline = true, AcceptsReturn = true,
                                                                            ScrollBars = ScrollBars.Vertical };
         readonly CheckBox auto = new CheckBox { Text = "手柄选中可编辑输入框时自动打开键盘", AutoSize = true };
@@ -92,7 +93,6 @@ namespace Gamepad
             display.Items.Add("跟随目标输入框");
             display.Items.AddRange(Screen.AllScreens.Select(s => s.DeviceName).ToArray());
             identifyButton = Button("识别按键", ToggleBindingCapture);
-            identifyStatus.Visible = false;
             SetupGrid();
             device.SelectedIndexChanged += (s, e) => SwitchDevice();
             InitDraft();
@@ -205,7 +205,7 @@ namespace Gamepad
             if (loading || device.SelectedIndex < 0)
                 return;
             CancelBindingCapture();
-            identifyStatus.Visible = false;
+            identifyStatus.Text = IdentifyHint;
             StoreProfile();
             var d = host.Devices.ElementAt(device.SelectedIndex);
             deviceId = d.Id;
@@ -226,7 +226,7 @@ namespace Gamepad
         void AssignProfile()
         {
             CancelBindingCapture();
-            identifyStatus.Visible = false;
+            identifyStatus.Text = IdentifyHint;
             StoreProfile();
             string name = profileName.Text.Trim();
             if (name.Length > 64)
@@ -302,7 +302,6 @@ namespace Gamepad
             identifyButton.Text = identifying ? "取消识别" : "识别按键";
             identifyStatus.Text = identifying ? "松开按键、摇杆回中后，按一个键或拨动摇杆。"
                                                : "请连接所选手柄后重试。";
-            identifyStatus.Show();
         }
         void CancelBindingCapture()
         {
@@ -327,12 +326,11 @@ namespace Gamepad
                 }
             }
             identifyStatus.Text = message ?? "已定位到 " + input + "。";
-            identifyStatus.Show();
         }
         void SelectPage(int i)
         {
             CancelBindingCapture();
-            identifyStatus.Visible = false;
+            identifyStatus.Text = IdentifyHint;
             page = i;
             content.SuspendLayout();
             foreach (Control shared in new Control[] { heading, status, primary, device, capabilities, live, speed,
@@ -409,7 +407,7 @@ namespace Gamepad
                 f.Controls.Add(tools);
                 f.Controls.Add(identifyStatus);
                 grid.Width = Math.Max(445, content.ClientSize.Width - 94);
-                grid.Height = Math.Max(200, content.ClientSize.Height - 295);
+                grid.Height = Math.Max(200, content.ClientSize.Height - 323);
                 f.Controls.Add(grid);
             }
             else if (i == 2)
