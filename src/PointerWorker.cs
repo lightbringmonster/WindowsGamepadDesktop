@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.Win32.SafeHandles;
@@ -19,7 +18,6 @@ namespace Gamepad
         IControllerDevice device;
         ControllerState latest;
         Profile profile;
-        string[] radialBindings;
         IntPtr approvedWindow;
         PointerGear gear;
 
@@ -54,13 +52,6 @@ namespace Gamepad
             {
                 if (profile != currentProfile || approvedWindow != window || gear != nextGear)
                     motion.Reset();
-                if (profile != currentProfile)
-                {
-                    var chord = currentProfile.ModeChord.Split('+');
-                    radialBindings = currentProfile.Desktop
-                        .Where(binding => binding.Value == "RadialMenu" && !chord.Contains(binding.Key))
-                        .Select(binding => binding.Key).ToArray();
-                }
                 // Active settings are read-only. The settings window edits a separate draft.
                 profile = currentProfile;
                 approvedWindow = window;
@@ -94,17 +85,6 @@ namespace Gamepad
                 {
                     SuspendLocked();
                     return;
-                }
-                // The stick can move in the same sample that starts a radial hold.
-                foreach (string button in radialBindings)
-                {
-                    if (latest.Buttons.Contains(button) ||
-                        (button == "LT" && latest.LT >= MappingEngine.TriggerPressThreshold) ||
-                        (button == "RT" && latest.RT >= MappingEngine.TriggerPressThreshold))
-                    {
-                        motion.Reset();
-                        return;
-                    }
                 }
                 motion.Apply(latest, profile, motion.Elapsed(clock.Elapsed.TotalMilliseconds), gear);
             }

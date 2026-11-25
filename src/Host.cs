@@ -15,6 +15,7 @@ namespace Gamepad
         readonly PointerWorker pointer;
         readonly IInputSink sink;
         readonly string settingsPath;
+        string configurationLoadWarning;
         internal Settings Config;
         internal readonly Dictionary<string, ControllerState> States = new Dictionary<string, ControllerState>();
         readonly Stopwatch clock = Stopwatch.StartNew();
@@ -34,10 +35,11 @@ namespace Gamepad
         readonly ApplicationProfiles policy = new ApplicationProfiles();
         bool firstRule = true;
         public Host(Settings cfg, IControllerProvider provider, IInputSink output, bool openSettings,
-                    string settingsPath = null, IAudioDevices audioDevices = null)
+                    string settingsPath = null, IAudioDevices audioDevices = null, string configurationLoadWarning = null)
         {
             Config = cfg;
             this.settingsPath = settingsPath ?? SettingsStore.Location;
+            this.configurationLoadWarning = configurationLoadWarning;
             this.audioDevices = audioDevices ?? new WindowsAudioDevices();
             game = cfg.StartsNative;
             sink = output;
@@ -140,7 +142,7 @@ namespace Gamepad
         }
         bool ShouldConsumeShellBack()
         {
-            if (closing || paused || game || systemBlocked || activeDevice == null)
+            if (closing || paused || game || systemBlocked || activeDevice == null || bindingCapture != null)
                 return false;
             var foreground = Win.GetForegroundWindow();
             bool overlay = keyboard.Visible || audioWindow.Visible;
@@ -307,23 +309,25 @@ namespace Gamepad
             modeLocked = !modeLocked;
             Notify(modeLocked ? ModeName : ModeName + " · 已解锁");
         }
-        void SetGame(bool value, bool applicationRule = false)
+        void SetGame(bool value, bool applicationRule = false, bool showNotice = true)
         {
             if (modeLocked)
                 return;
             if (game == value)
             {
-                if (applicationRule && game && !paused)
+                if (showNotice && applicationRule && game && !paused)
                     Notify("原生手柄 · 应用规则");
                 return;
             }
             game = value;
             CloseOverlay();
-            Notify(applicationRule && paused ? ModeName : "已切换 · " + (game ? "原生手柄" : "桌面键鼠"));
+            if (showNotice)
+                Notify(applicationRule && paused ? ModeName : "已切换 · " + (game ? "原生手柄" : "桌面键鼠"));
         }
         internal void Pause(bool value)
         {
             paused = value;
+            FinishBindingCapture(null, "识别已取消。");
             CloseOverlay();
             Notify(ModeName);
         }
@@ -332,6 +336,7 @@ namespace Gamepad
         {
             if (hwnd == observed && !firstRule)
                 return;
+            bool showNotice = observed != IntPtr.Zero;
             observed = hwnd;
             if (!Win.IsShellMenu(hwnd))
                 lastApp = hwnd;
@@ -340,7 +345,7 @@ namespace Gamepad
             firstRule = false;
             bool? transition = policy.Enter(name, Config.GameApps);
             if (transition.HasValue)
-                SetGame(transition.Value, applicationRule: true);
+                SetGame(transition.Value, applicationRule: true, showNotice: showNotice);
         }
         void Tick()
         {
@@ -360,7 +365,7 @@ namespace Gamepad
             foreach (var d in manager.Devices)
                 if (selected == d.Id)
                     States[d.Id] = pointer.Latest();
-                else if (scan ||
+                else if (scan || (bindingCapture != null && bindingCapture.DeviceId == d.Id) ||
                     (SettingsVisible && States.ContainsKey(d.Id) && States[d.Id].Connected))
                     States[d.Id] = d.Read();
             // Keep using the selected controller until discovery or a fresh sample requires reselection.
@@ -377,7 +382,9 @@ namespace Gamepad
                 engine.Reset();
                 CloseOverlay();
             }
-            if (id != null && !SessionBlocked)
+            if (bindingCapture != null)
+                SampleBindingCapture(fg, now);
+            else if (id != null && !SessionBlocked)
             {
                 var profile = Config.For(id);
                 engine.Tick(States[id], profile, now);
@@ -388,8 +395,11 @@ namespace Gamepad
             }
             else
                 engine.Reset();
-            CheckFocus(now);
-            messages.SetPollInterval(id == null ? (keyboard.Visible || audioWindow.Visible ? 100 : 250) : 15);
+            if (bindingCapture == null)
+                CheckFocus(now);
+            messages.SetPollInterval(id == null && bindingCapture == null
+                                         ? (keyboard.Visible || audioWindow.Visible ? 100 : 250)
+                                         : 15);
         }
         internal void Apply(Settings next)
         {
@@ -444,6 +454,7 @@ namespace Gamepad
             if (closing)
                 return;
             closing = true;
+            FinishBindingCapture(null, "识别已取消。");
             CloseOverlay();
             engine.Reset();
             pointer.Dispose();

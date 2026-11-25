@@ -243,6 +243,13 @@ namespace Gamepad
             if (settings.WindowState == FormWindowState.Minimized)
                 Win.ShowWindow(settings.Handle, 9); // SW_RESTORE
             settings.Activate();
+            if (configurationLoadWarning != null)
+            {
+                string detail = configurationLoadWarning;
+                configurationLoadWarning = null;
+                PopupNotice.ShowNotice("本次启动已使用默认设置。原配置会保留到下次保存。\n" + detail,
+                                       "配置无法载入", settings);
+            }
         }
     }
 }

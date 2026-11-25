@@ -6,7 +6,7 @@ Use an XInput gamepad as a mouse and keyboard on Windows 11 x64. The default lay
 
 ![Pinyin on-screen keyboard with a sentence candidate and controller shortcuts](docs/images/keyboard-pinyin.png)
 
-[Download the Windows x64 portable package](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest) · [v1.0.0 release notes](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/v1.0.0) · [0.9.x archive](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/archive-0.9)
+[Download the Windows x64 portable package](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest) · [v1.1.0 release notes](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/v1.1.0) · [0.9.x archive](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/archive-0.9)
 
 ## Build from source
 
@@ -22,6 +22,8 @@ cd WindowsGamepadDesktop
 The build writes to `bin`. To move the app, keep the executable and its sibling `data` directory together.
 
 ## Getting started
+
+Run `WindowsGamepadDesktop.exe` to start in the notification area. Double-click its icon or choose **设置** (Settings) from the icon's menu to open settings. The `--settings` argument also opens settings.
 
 1. Connect an XInput-compatible controller. For a Beitong controller, select PC/XInput mode and connect via the receiver or USB. **设备** (Devices) shows the slot and live input values. Windows may identify the device as an Xbox 360-compatible controller.
 2. Release all controls, then use the left stick to move the pointer. Press B to click. A direct gamepad click on a supported edit field can open the keyboard automatically. RB opens it manually.
@@ -40,7 +42,7 @@ Desktop mode is the default at launch. Under **Settings → 设备 (Devices) →
 | Left stick / Right stick | Move the pointer / Scroll horizontally and vertically |
 | B / X | Left click or hold to drag / Right click |
 | LT | Tap to toggle standard and fine. Hold for at least 150 ms for temporary ultra-fine motion |
-| RT | Hold to open the quick actions wheel |
+| RT | Center the pointer stick, then hold RT to open the quick actions wheel |
 | A / Y | Escape / Enter |
 | D-pad | Arrow keys, with repeat |
 | LB / RB | Alt + Tab / Toggle the on-screen keyboard |
@@ -66,6 +68,8 @@ Use the D-pad or left stick to highlight a key. B selects, A closes, X deletes, 
 The keyboard opens on the target display by default and moves out of the way of the edit field when there is room. Auto-open checks that the gamepad click landed inside the focused editable field. Gamepad bindings for Tab, Shift + Tab, Ctrl + L, and Ctrl + F can also open it. The browser giving its address bar focus when opening or switching tabs leaves the keyboard closed. Use RB for unsupported controls. Password fields open the English layout. The app does not read field values, store typed text, or read the clipboard.
 
 ## Controllers and settings
+
+In **按键映射** (Key Mapping), select a device and click **识别按键** (Identify Input). Release the other controls and center the sticks, then press one button or move one stick to highlight its mapping row. The app pauses mouse and keyboard output during identification. Choose the action and click **保存设置** (Save settings).
 
 XInput exposes up to four slots. Automatic primary selection stays on the first selected slot for the current session. If it disconnects, the desktop mapper waits for that slot to return. Select another slot in settings to change the primary controller.
 

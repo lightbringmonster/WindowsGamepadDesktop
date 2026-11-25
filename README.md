@@ -8,7 +8,7 @@ Windows 11 x64 手柄桌面控制器。使用 Xbox 字母标记，桌面与屏�
 
 ![Windows Gamepad Desktop 拼音键盘，显示整句候选与手柄按键提示](docs/images/keyboard-pinyin.png)
 
-[下载 Windows x64 便携版](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest) · [v1.0.0 发布说明](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/v1.0.0) · [0.9.x 历史归档](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/archive-0.9)
+[下载 Windows x64 便携版](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest) · [v1.1.0 发布说明](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/v1.1.0) · [0.9.x 历史归档](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/archive-0.9)
 
 ## 从源码构建
 
@@ -25,13 +25,13 @@ cd WindowsGamepadDesktop
 
 ## 开始使用
 
-1. 解压整个便携包，将 EXE 和同级 `data` 文件夹放在一起，双击 `WindowsGamepadDesktop.exe`。首次启动显示设置，其余时间常驻通知区域。
+1. 解压整个便携包，将 EXE 和同级 `data` 文件夹放在一起，双击 `WindowsGamepadDesktop.exe`。程序直接进入任务栏通知区域。双击通知区域图标，或右键选择「设置」，即可打开设置页。
 2. 让北通手柄通过接收器或 USB 以 PC / XInput 模式连接。在「设备」中查看槽位、实时摇杆、扳机和按键。Windows 可能显示 Xbox 360 兼容名称。无线方式是否可用取决于手柄当前输出的协议。
 3. 放开摇杆和所有按键，再用左摇杆移动指针。用 B 直接点击可编辑输入框可自动弹出键盘，RB 可手动呼出。**同时按住 LB + RB 约 2 秒后松开**，可在桌面键鼠与原生手柄之间切换。到 2 秒时屏幕会提示「松开切换」，松手确认后显示「已切换」。持续按到 3 秒可锁定或解锁当前模式。
 4. 在「应用规则」添加游戏的实际进程文件名并保存。便携包预置 `Playnite.FullscreenApp.exe`，可在列表中删除。未锁定时，离开匹配进程会回到桌面，切回该进程会再次使用原生手柄。手动切换适用于窗口化和全屏。
 5. 要随 Windows 登录启动，先将整个便携目录放到长期使用的位置，再从该位置运行程序，右键通知区域的应用图标并勾选「登录时自启动」。下次登录时程序会常驻通知区域。移动目录后，需从新路径运行并重新勾选。初始默认关闭。
 
-**紧急暂停**使用 Ctrl + Alt + F12。恢复时从托盘取消「暂停映射」。快捷键被占用时，设备页会显示提示。再次双击正在运行的程序会打开设置。
+**紧急暂停**使用 Ctrl + Alt + F12。恢复时从托盘取消「暂停映射」。快捷键被占用时，设备页会显示提示。也可使用 `--settings` 参数打开设置。
 
 默认启动进入桌面键鼠模式。在「设置 → 设备 → 启动模式」可改为原生手柄，或沿用上次正常退出时的模式。设置从下次启动生效。
 
@@ -42,7 +42,7 @@ cd WindowsGamepadDesktop
 | 左摇杆 / 右摇杆 | 移动指针 / 横向及纵向滚动 |
 | B / X | 鼠标左键 / 右键。B 可按住或连续点击两次 |
 | LT | 短按切换标准和精细。按住至少 150 毫秒临时进入极精，松手恢复原档 |
-| RT | 按住打开常用操作轮盘 |
+| RT | 指针摇杆回中后按住，打开常用操作轮盘 |
 | A / Y | Esc / Enter |
 | 十字键 | 四向方向键，按住可重复 |
 | LB / RB | Alt + Tab / 打开或收起屏幕键盘 |
@@ -68,6 +68,8 @@ cd WindowsGamepadDesktop
 键盘默认跟随目标显示器，靠近底部，输入框与键盘相交时尝试移到顶部。可在设置中锁定显示器、调整占屏比例和初始布局。自动弹出会核对手柄点击的位置和可编辑控件。由手柄映射触发的 Tab、Shift + Tab、Ctrl + L 或 Ctrl + F 也可呼出键盘。打开或切换浏览器标签页时，地址栏自动取得焦点不会呼出键盘。遇到画布、自绘控件或不提供可访问性信息的应用，聚焦目标后按 RB。密码控件自动使用 English 布局。程序不读取字段值、不保存输入内容，也不写按键日志。
 
 ## 设备和配置
+
+在「按键映射」选择设备后，点「识别按键」。松开其他按键并让摇杆回中，再按下一个键或拨动一个摇杆，设置会定位到对应行。识别期间暂停程序的键鼠输出。选好动作后再点「保存设置」。
 
 设置按设备能力生成映射行。桌面动作可直接填写，例如 `Key:Ctrl+Shift+S`、`Key:F5`、`Keyboard`、`Mode`、`MouseLeft`。摇杆支持 `Cursor`、`Scroll` 和 `None`。键盘动作可用下拉框选择。切换组合在「模式组合键」中填写两个输入 ID，例如 `Back+Start`。拖拽或精细移动应分配给未参与切换组合的按键。
 

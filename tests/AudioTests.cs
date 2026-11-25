@@ -80,8 +80,10 @@ namespace Gamepad
         static void OpenAudioPicker(SimDevice pad, AudioFlow flow)
         {
             int sector = Array.FindIndex(RadialAction.Items, item => item.Audio == flow);
-            pad.State = AimRadial(sector, true);
+            pad.State = HoldRadialTrigger();
             Await(() => VisibleRadialWindow() != IntPtr.Zero, "radial menu opens for audio selection", 1200);
+            pad.State = AimRadial(sector, true);
+            Pump(100);
             pad.State = AimRadial(sector, false);
             Await(() => IsWindowVisible(FindWindow(null, "声音设备选择")), "sound device list opens", 1200);
             pad.State = Pad();

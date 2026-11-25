@@ -74,6 +74,11 @@ namespace Gamepad
                 AudioWindowChecks(args[1]);
                 return;
             }
+            if (args.Length == 2 && args[0] == "--identify-preview")
+            {
+                BindingCaptureWindowChecks(args[1]);
+                return;
+            }
             if (args.Contains("--startup-mode"))
             {
                 StartupModeChecks();
@@ -159,6 +164,7 @@ namespace Gamepad
             FinalChecks();
             PointerWorkerChecks();
             DesktopGestureChecks();
+            BindingCaptureChecks();
             Console.WriteLine("Passed " + count + " checks");
         }
         static partial void More();
