@@ -13,6 +13,31 @@ namespace Gamepad
     }
     internal static class Win
     {
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct PaintInfo
+        {
+            internal IntPtr Dc;
+            internal int Erase;
+            internal int Left, Top, Right, Bottom;
+            internal int Restore, Incremental;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+            internal byte[] Reserved;
+        }
+        [DllImport("user32.dll")]
+        internal static extern bool SetWindowPos(IntPtr window, IntPtr order, int x, int y, int width, int height,
+                                                 uint flags);
+        [DllImport("user32.dll")]
+        internal static extern int SetWindowRgn(IntPtr window, IntPtr region, bool redraw);
+        [DllImport("gdi32.dll")]
+        internal static extern bool DeleteObject(IntPtr handle);
+        [DllImport("user32.dll")]
+        internal static extern bool SetLayeredWindowAttributes(IntPtr window, uint color, byte alpha, uint flags);
+        [DllImport("user32.dll")]
+        internal static extern bool InvalidateRect(IntPtr window, IntPtr bounds, bool erase);
+        [DllImport("user32.dll")]
+        internal static extern IntPtr BeginPaint(IntPtr window, out PaintInfo paint);
+        [DllImport("user32.dll")]
+        internal static extern bool EndPaint(IntPtr window, ref PaintInfo paint);
         [DllImport("user32.dll")]
         internal static extern bool SetForegroundWindow(IntPtr window);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]

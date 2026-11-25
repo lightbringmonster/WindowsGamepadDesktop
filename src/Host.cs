@@ -19,13 +19,14 @@ namespace Gamepad
         readonly Stopwatch clock = Stopwatch.StartNew();
         readonly KeyboardModel model;
         readonly KeyboardWindow keyboard;
+        readonly RadialMenuWindow radialMenu = new RadialMenuWindow();
         readonly NotifyIcon tray = new NotifyIcon();
         readonly ContextMenuStrip menu = new ContextMenuStrip();
         IControllerDevice activeDevice;
         string selected;
         long nextScan;
         bool paused, game, modeLocked, closing;
-        IntPtr target, observed, lastApp;
+        IntPtr target, radialTarget, observed, lastApp;
         readonly ApplicationProfiles policy = new ApplicationProfiles();
         bool firstRule = true;
         public Host(Settings cfg, IControllerProvider provider, IInputSink output, bool openSettings,
@@ -40,6 +41,9 @@ namespace Gamepad
             engine.SetContext(game, false, false);
             engine.ToggleMode = ToggleGame;
             engine.ModeSwitchReady = ShowSwitchPrompt;
+            engine.PrecisionChanged = ShowPrecision;
+            engine.RadialPreview = ShowRadial;
+            engine.RadialEnded = EndRadial;
             engine.ToggleModeLock = ToggleModeLock;
             engine.ToggleKeyboard = ToggleKeyboard;
             engine.MappedAction = OnMappedAction;
@@ -176,6 +180,34 @@ namespace Gamepad
             if (!modeLocked)
                 Notify("松开切换 · " + (game ? "桌面键鼠" : "原生手柄"));
         }
+        void ShowPrecision(PointerGear gear)
+        {
+            Notify("指针精细度 · " +
+                   (gear == PointerGear.Standard ? "标准" : gear == PointerGear.Fine ? "精细" : "极精（松开恢复）"));
+        }
+        void ShowRadial(int selection)
+        {
+            var window = Win.GetForegroundWindow();
+            if (window == IntPtr.Zero || window != observed)
+                return;
+            if (!radialMenu.Visible)
+            {
+                radialTarget = window;
+                radialMenu.Present(window, selection);
+            }
+            else
+                radialMenu.SelectAction(selection);
+        }
+        void EndRadial(int selectedAction)
+        {
+            var window = radialTarget;
+            radialTarget = IntPtr.Zero;
+            if (radialMenu.Visible)
+                radialMenu.Hide();
+            if (selectedAction >= 0 && window != IntPtr.Zero && window == Win.GetForegroundWindow() &&
+                Win.IsWindow(window))
+                engine.Ledger.Tap(RadialAction.Items[selectedAction].Keys);
+        }
         void ToggleGame()
         {
             SetGame(!game);
@@ -237,6 +269,8 @@ namespace Gamepad
                 return;
             long now = clock.ElapsedMilliseconds;
             IntPtr fg = Win.GetForegroundWindow();
+            if (fg != observed && engine.RadialEngaged)
+                engine.CancelRadial();
             if (keyboard.Visible && (fg != target || !Win.IsWindow(target)))
                 CloseKeyboard();
             if (fg != IntPtr.Zero)
@@ -269,7 +303,9 @@ namespace Gamepad
                 var profile = Config.For(id);
                 engine.Tick(States[id], profile, now);
                 if (engine.CanMove)
-                    pointer.Allow(profile, fg, engine.PrecisionActive);
+                    pointer.Allow(profile, fg, engine.Gear);
+                else
+                    pointer.Suspend();
             }
             else
                 engine.Reset();
@@ -338,6 +374,7 @@ namespace Gamepad
             tray.Dispose();
             menu.Dispose();
             keyboard.Dispose();
+            radialMenu.Dispose();
             base.ExitThreadCore();
         }
     }

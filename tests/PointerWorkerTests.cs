@@ -8,11 +8,16 @@ namespace Gamepad
         sealed class MotionCounter : IInputSink
         {
             internal int Moves;
+            internal int PixelsX;
             public bool Key(int vk, bool down) { return true; }
             public bool Mouse(int button, bool down) { return true; }
             public void Text(string text) { }
             public void Wheel(int horizontal, int vertical) { }
-            public void Move(int x, int y) { Interlocked.Increment(ref Moves); }
+            public void Move(int x, int y)
+            {
+                Interlocked.Add(ref PixelsX, x);
+                Interlocked.Increment(ref Moves);
+            }
         }
 
         static void PointerWorkerChecks()
@@ -25,7 +30,7 @@ namespace Gamepad
             using (var worker = new PointerWorker(sink, () => (IntPtr)Volatile.Read(ref window)))
             {
                 worker.Bind(pad, pad.State);
-                worker.Allow(profile, (IntPtr)1, false);
+                worker.Allow(profile, (IntPtr)1, PointerGear.Standard);
                 Check(SpinWait.SpinUntil(() => Volatile.Read(ref sink.Moves) >= 4, 1500),
                       "pointer worker emits motion without a UI message pump");
 
@@ -41,7 +46,7 @@ namespace Gamepad
                 Check(foregroundSeen > 0 && Volatile.Read(ref sink.Moves) == foregroundSeen,
                       "foreground change revokes motion until reapproved");
 
-                worker.Allow(profile, (IntPtr)1, false);
+                worker.Allow(profile, (IntPtr)1, PointerGear.Standard);
                 Check(SpinWait.SpinUntil(() => Volatile.Read(ref sink.Moves) > foregroundSeen, 1500),
                       "current foreground approval restores motion");
                 worker.Suspend();
@@ -49,7 +54,7 @@ namespace Gamepad
                 Thread.Sleep(70);
                 Check(Volatile.Read(ref sink.Moves) == paused, "suspension stops motion synchronously");
 
-                worker.Allow(profile, (IntPtr)1, false);
+                worker.Allow(profile, (IntPtr)1, PointerGear.Standard);
                 Volatile.Write(ref pad.State, new ControllerState());
                 Check(SpinWait.SpinUntil(() => !worker.Latest().Connected, 1500), "worker publishes disconnection");
                 int disconnected = Volatile.Read(ref sink.Moves);

@@ -197,6 +197,7 @@ namespace Gamepad
                     Check(Win.GetForegroundWindow() == w, "fixture foreground");
                     var pad = new SimDevice { Id = "sim:0", PhysicalKey = "fixture", State = Pad() };
                     var cfg = new Settings();
+                    cfg.For(pad.Id).Desktop["RT"] = "MouseLeft";
                     var provider = new SimProvider { Devices = new[] { pad } };
                     host = new Host(cfg, provider, new GuardedSink(w), false);
                     Pump(280);

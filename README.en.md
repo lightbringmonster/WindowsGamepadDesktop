@@ -38,8 +38,9 @@ Desktop mode is the default at launch. Under **Settings → 设备 (Devices) →
 | Input | Default action |
 | --- | --- |
 | Left stick / Right stick | Move the pointer / Scroll horizontally and vertically |
-| B / X | Left mouse button / Right mouse button |
-| RT / LT | Hold left mouse button to drag / Precision movement at 22% speed |
+| B / X | Left click or hold to drag / Right click |
+| LT | Tap to toggle standard and fine. Hold for at least 150 ms for temporary ultra-fine motion |
+| RT | Hold to open the quick actions wheel |
 | A / Y | Escape / Enter |
 | D-pad | Arrow keys, with repeat |
 | LB / RB | Alt + Tab / Toggle the on-screen keyboard |
@@ -48,7 +49,9 @@ Desktop mode is the default at launch. Under **Settings → 设备 (Devices) →
 
 A three-second hold preserves the current mode. The lock blocks the switch gesture, mapped mode buttons, the tray command, and app rules. Unlocking keeps the current mode until the next switch or rule change. The lock lasts until the app exits.
 
-When used individually, LB and RB act on release. Pressing them together suppresses both individual actions. After a mode change, pause, or disconnection, return the controls to neutral. If both B and RT are holding the left mouse button, release both to end the hold.
+When used individually, LB and RB act on release. Pressing them together suppresses both individual actions. After a mode change, pause, or disconnection, return the controls to neutral.
+
+Move either stick to highlight a command. Release RT to run it or center the stick to cancel. The wheel contains Start, Task View, switch window, show desktop, lock screen, volume up and down, undo, paste, and copy. Previously saved RT bindings stay active. To enable the wheel on an existing profile, select `RadialMenu` in its desktop bindings.
 
 ## On-screen keyboard
 
