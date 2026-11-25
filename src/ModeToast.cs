@@ -17,36 +17,10 @@ namespace Gamepad
         const uint ShowWindow = 0x0040;
         const uint HideWindow = 0x0080;
 
-        [StructLayout(LayoutKind.Sequential)]
-        struct PaintInfo
-        {
-            internal IntPtr Dc;
-            internal int Erase;
-            internal int Left, Top, Right, Bottom;
-            internal int Restore, Incremental;
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
-            internal byte[] Reserved;
-        }
-
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         static extern bool SetWindowText(IntPtr window, string text);
-        [DllImport("user32.dll")]
-        static extern bool SetWindowPos(IntPtr window, IntPtr order, int x, int y, int width, int height,
-                                        uint flags);
-        [DllImport("user32.dll")]
-        static extern bool SetLayeredWindowAttributes(IntPtr window, uint color, byte alpha, uint flags);
-        [DllImport("user32.dll")]
-        static extern bool InvalidateRect(IntPtr window, IntPtr bounds, bool erase);
-        [DllImport("user32.dll")]
-        static extern IntPtr BeginPaint(IntPtr window, out PaintInfo paint);
-        [DllImport("user32.dll")]
-        static extern bool EndPaint(IntPtr window, ref PaintInfo paint);
         [DllImport("gdi32.dll")]
         static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
-        [DllImport("user32.dll")]
-        static extern int SetWindowRgn(IntPtr window, IntPtr region, bool redraw);
-        [DllImport("gdi32.dll")]
-        static extern bool DeleteObject(IntPtr handle);
 
         readonly Timer timeout = new Timer { Interval = 1250 };
         Bitmap frame;
@@ -59,8 +33,8 @@ namespace Gamepad
             {
                 timeout.Stop();
                 if (Handle != IntPtr.Zero)
-                    SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0,
-                                 NoActivate | KeepBounds | KeepZOrder | HideWindow);
+                    Win.SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0,
+                                     NoActivate | KeepBounds | KeepZOrder | HideWindow);
             };
         }
 
@@ -78,7 +52,7 @@ namespace Gamepad
             {
                 CreateHandle(new CreateParams { Caption = text, Style = Popup, ExStyle = LayeredToolWindow,
                                                 Width = 1, Height = 1 });
-                SetLayeredWindowAttributes(Handle, 0, 255, 2);
+                Win.SetLayeredWindowAttributes(Handle, 0, 255, 2);
             }
             else
                 SetWindowText(Handle, text);
@@ -93,12 +67,12 @@ namespace Gamepad
             DrawFrame(headline, detail, PopupTheme.Current());
 
             var region = CreateRoundRectRgn(0, 0, width + 1, height + 1, Scale(26), Scale(26));
-            if (region != IntPtr.Zero && SetWindowRgn(Handle, region, false) == 0)
-                DeleteObject(region);
+            if (region != IntPtr.Zero && Win.SetWindowRgn(Handle, region, false) == 0)
+                Win.DeleteObject(region);
 
-            SetWindowPos(Handle, Topmost, work.Left + (work.Width - width) / 2, work.Top + Scale(23), width,
-                         height, NoActivate | ShowWindow);
-            InvalidateRect(Handle, IntPtr.Zero, false);
+            Win.SetWindowPos(Handle, Topmost, work.Left + (work.Width - width) / 2, work.Top + Scale(23), width,
+                             height, NoActivate | ShowWindow);
+            Win.InvalidateRect(Handle, IntPtr.Zero, false);
             timeout.Stop();
             timeout.Start();
         }
@@ -180,8 +154,8 @@ namespace Gamepad
         {
             if (message.Msg == 0x000F)
             {
-                PaintInfo paint;
-                var dc = BeginPaint(message.HWnd, out paint);
+                Win.PaintInfo paint;
+                var dc = Win.BeginPaint(message.HWnd, out paint);
                 try
                 {
                     if (dc != IntPtr.Zero && frame != null)
@@ -189,7 +163,7 @@ namespace Gamepad
                 }
                 finally
                 {
-                    EndPaint(message.HWnd, ref paint);
+                        Win.EndPaint(message.HWnd, ref paint);
                 }
                 message.Result = IntPtr.Zero;
                 return;

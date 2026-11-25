@@ -24,7 +24,7 @@ namespace Gamepad
             ModeChord = "LB+RB";
             Desktop =
                 Pairs("LeftStick=Cursor|RightStick=Scroll|B=MouseLeft|A=Key:Escape|X=MouseRight|Y=Key:Enter|" +
-                      "LB=Key:Alt+Tab|RB=Keyboard|LT=Precision|RT=MouseLeft|Up=Key:Up|Down=Key:Down|Left=Key:" +
+                      "LB=Key:Alt+Tab|RB=Keyboard|LT=Precision|RT=RadialMenu|Up=Key:Up|Down=Key:Down|Left=Key:" +
                       "Left|Right=Key:Right|Start=Key:Win|Back=Key:Win+D|LS=None|RS=None");
             Keyboard = Pairs(
                 "LeftStick=Navigate|RightStick=None|Up=Up|Down=Down|Left=Left|Right=Right|B=Select|A=Close|X=Delete|" +
@@ -35,7 +35,7 @@ namespace Gamepad
             return value.Split('|').Select(x => x.Split('=')).ToDictionary(a => a[0], a => a[1]);
         }
         public static readonly string[] DesktopActions = {
-            "None",       "MouseLeft", "MouseRight", "MouseMiddle", "Precision", "Keyboard",   "Mode",
+            "None",       "MouseLeft", "MouseRight", "MouseMiddle", "Precision", "RadialMenu", "Keyboard", "Mode",
             "Key:Escape", "Key:Enter", "Key:Tab",    "Key:Alt+Tab", "Key:Win+D", "Key:Ctrl+C", "Key:Ctrl+V",
             "Key:Up",     "Key:Down",  "Key:Left",   "Key:Right",   "Key:Win"
         };

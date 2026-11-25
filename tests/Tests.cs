@@ -64,6 +64,11 @@ namespace Gamepad
                 PopupChecks(args[1]);
                 return;
             }
+            if (args.Length == 2 && args[0] == "--radial-preview")
+            {
+                RadialWindowChecks(args[1]);
+                return;
+            }
             if (args.Contains("--startup-mode"))
             {
                 StartupModeChecks();
@@ -148,6 +153,7 @@ namespace Gamepad
             More();
             FinalChecks();
             PointerWorkerChecks();
+            DesktopGestureChecks();
             Console.WriteLine("Passed " + count + " checks");
         }
         static partial void More();

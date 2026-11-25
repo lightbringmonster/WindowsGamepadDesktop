@@ -10,6 +10,8 @@ namespace Gamepad
         public Action ToggleMode, ToggleModeLock, ToggleKeyboard;
         internal Action<int[]> MappedAction;
         internal Action ModeSwitchReady;
+        internal Action<PointerGear> PrecisionChanged;
+        internal Action<int> RadialPreview, RadialEnded;
         public Action<string> KeyboardCommand;
         public bool Game { get; private set; }
         public bool Paused { get; private set; }
@@ -18,8 +20,15 @@ namespace Gamepad
         readonly Dictionary<string, long> repeats = new Dictionary<string, long>();
         readonly ModeGesture modeGesture = new ModeGesture();
         bool neutral = true, lt, rt;
-        internal bool CanMove { get { return !neutral && !Game && !Paused && !Overlay; } }
-        internal bool PrecisionActive { get; private set; }
+        const int PrecisionHoldMs = 150, RadialHoldMs = 150;
+        internal const double TriggerPressThreshold = .52;
+        long precisionAt = -1, radialAt = -1;
+        int radialChoice = -1;
+        bool radialVisible;
+        PointerGear selectedGear;
+        internal PointerGear Gear { get; private set; }
+        internal bool RadialEngaged { get { return radialAt >= 0; } }
+        internal bool CanMove { get { return !neutral && !Game && !Paused && !Overlay && !RadialEngaged; } }
         public MappingEngine(IInputSink output) : this(output, true)
         {
         }
@@ -32,18 +41,26 @@ namespace Gamepad
         public void Reset()
         {
             modeGesture.Reset();
+            selectedGear = PointerGear.Standard;
             ResetMapping();
         }
         void ResetMapping()
         {
+            EndRadial(-1);
             Ledger.Release();
             prior.Clear();
             repeats.Clear();
             neutral = true;
-            PrecisionActive = false;
+            precisionAt = -1;
+            Gear = selectedGear;
             if (motion != null)
                 motion.Reset();
             lt = rt = false;
+        }
+        internal void CancelRadial()
+        {
+            if (RadialEngaged)
+                ResetMapping();
         }
         public void SetContext(bool game, bool paused, bool overlay)
         {
@@ -54,7 +71,7 @@ namespace Gamepad
         }
         static void Trigger(HashSet<string> set, string id, double value, ref bool latched)
         {
-            latched = value >= (latched ? .32 : .52);
+            latched = value >= (latched ? .32 : TriggerPressThreshold);
             if (latched)
                 set.Add(id);
         }
@@ -108,8 +125,13 @@ namespace Gamepad
                 prior = down;
                 return;
             }
+            if (!Overlay)
+            {
+                if (HandleRadial(Holding(down, p, "RadialMenu"), state, now))
+                    return;
+                UpdatePrecision(Holding(down, p, "Precision"), now);
+            }
             var wanted = new List<int>();
-            PrecisionActive = false;
             var mapping = Overlay ? p.Keyboard : p.Desktop;
             foreach (string id in prior.Union(down).ToArray())
             {
@@ -149,11 +171,6 @@ namespace Gamepad
                         ToggleKeyboard();
                     return;
                 }
-                if (action == "Precision")
-                {
-                    PrecisionActive |= isDown && !deferred;
-                    continue;
-                }
                 int[] keys = Tokens(action);
                 if (keys == null)
                     continue;
@@ -174,8 +191,66 @@ namespace Gamepad
             }
             Ledger.Sync(wanted);
             if (motion != null && !Overlay)
-                motion.Apply(state, p, dt, PrecisionActive);
+                motion.Apply(state, p, dt, Gear);
             prior = down;
+        }
+        bool Holding(HashSet<string> down, Profile profile, string action)
+        {
+            return down.Any(id => !modeGesture.Contains(id) && Get(profile.Desktop, id) == action);
+        }
+        void UpdatePrecision(bool held, long now)
+        {
+            if (held && precisionAt < 0)
+                precisionAt = now;
+            if (!held && precisionAt >= 0)
+            {
+                if (now - precisionAt < PrecisionHoldMs)
+                    selectedGear = selectedGear == PointerGear.Standard ? PointerGear.Fine : PointerGear.Standard;
+                precisionAt = -1;
+            }
+            var next = precisionAt >= 0 && now - precisionAt >= PrecisionHoldMs ? PointerGear.Ultra : selectedGear;
+            if (Gear != next)
+            {
+                Gear = next;
+                if (PrecisionChanged != null)
+                    PrecisionChanged(next);
+            }
+        }
+        bool HandleRadial(bool held, ControllerState state, long now)
+        {
+            if (!held && !RadialEngaged)
+                return false;
+            if (!held)
+            {
+                EndRadial(RadialAction.Select(state, radialChoice) < 0 ? -1 : radialChoice);
+                ResetMapping();
+                return true;
+            }
+            if (!RadialEngaged)
+            {
+                radialAt = now;
+                precisionAt = -1;
+                Gear = selectedGear;
+            }
+            Ledger.Release();
+            if (now - radialAt >= RadialHoldMs)
+            {
+                int next = RadialAction.Select(state, radialChoice);
+                if ((!radialVisible || radialChoice != next) && RadialPreview != null)
+                    RadialPreview(next);
+                radialVisible = true;
+                radialChoice = next;
+            }
+            return true;
+        }
+        void EndRadial(int selected)
+        {
+            bool shown = radialVisible;
+            radialAt = -1;
+            radialVisible = false;
+            radialChoice = -1;
+            if (shown && RadialEnded != null)
+                RadialEnded(selected);
         }
         static string Get(Dictionary<string, string> map, string id)
         {
@@ -238,12 +313,12 @@ namespace Gamepad
             previousTime = now;
             return dt;
         }
-        internal void Apply(ControllerState state, Profile profile, double dt, bool precise)
+        internal void Apply(ControllerState state, Profile profile, double dt, PointerGear gear)
         {
-            Axis(state.LX, state.LY, "LeftStick", profile, dt, precise);
-            Axis(state.RX, state.RY, "RightStick", profile, dt, precise);
+            Axis(state.LX, state.LY, "LeftStick", profile, dt, gear);
+            Axis(state.RX, state.RY, "RightStick", profile, dt, gear);
             foreach (var axis in state.ExtraAxes)
-                Axis(axis.Value.X, axis.Value.Y, axis.Key, profile, dt, precise);
+                Axis(axis.Value.X, axis.Value.Y, axis.Key, profile, dt, gear);
         }
         static int Whole(ref double value)
         {
@@ -251,16 +326,30 @@ namespace Gamepad
             value -= i;
             return i;
         }
-        void Axis(double x, double y, string id, Profile p, double dt, bool precise)
+        void Axis(double x, double y, string id, Profile p, double dt, PointerGear gear)
         {
-            double mag = Math.Sqrt(x * x + y * y);
             string action;
-            if (mag <= p.DeadZone || !p.Desktop.TryGetValue(id, out action))
+            if (!p.Desktop.TryGetValue(id, out action) || action == "None")
                 return;
-            double power = Math.Pow((Math.Min(1, mag) - p.DeadZone) / (1 - p.DeadZone), p.Curve) * dt / mag;
+            double mag = Math.Sqrt(x * x + y * y), speed = p.Speed, deadZone = p.DeadZone, curve = p.Curve;
+            if (action == "Cursor" && gear == PointerGear.Fine)
+            {
+                speed = Math.Min(420, speed * (420.0 / 940));
+                deadZone = .20;
+                curve = 1.25;
+            }
+            else if (action == "Cursor" && gear == PointerGear.Ultra)
+            {
+                speed = Math.Min(130, speed * (130.0 / 940));
+                deadZone = .24;
+                curve = 1;
+            }
+            if (mag <= deadZone)
+                return;
+            double power = Math.Pow((Math.Min(1, mag) - deadZone) / (1 - deadZone), curve) * dt / mag;
             if (action == "Cursor")
             {
-                double v = power * p.Speed * (precise ? .22 : 1);
+                double v = power * speed;
                 mx += x * v;
                 my -= y * v;
                 int dx = Whole(ref mx), dy = Whole(ref my);
