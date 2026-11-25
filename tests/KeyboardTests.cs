@@ -68,6 +68,11 @@ namespace Gamepad
             var target = new Rectangle(-1000, 800, 150, 40);
             var pos = KeyboardWindow.Place(new Rectangle(-1920, 0, 1920, 1080), target, 41);
             Check(pos.Left < 0 && !pos.IntersectsWith(target), "multi-monitor placement avoids edited control");
+            var searchPanel = new Rectangle(743, 267, 1073, 1113);
+            var shellPosition =
+                KeyboardWindow.Place(new Rectangle(0, 0, 2560, 1390), target, 41, searchPanel);
+            Check(!shellPosition.IsEmpty && !shellPosition.IntersectsWith(searchPanel),
+                  "keyboard stays clear of the Windows Search panel");
             MoreFocus();
         }
         static void TypeReading(KeyboardModel model, string reading)

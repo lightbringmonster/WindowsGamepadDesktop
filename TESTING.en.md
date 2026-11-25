@@ -21,6 +21,10 @@ Tests were performed on 2026-11-24. The environment was a Dell G15 5520 with Win
 
 Windows tests send characters only while the intended test window has focus. The test may stop when the window is covered by another program. The test program briefly uses the mouse and attempts to restore the mouse position and foreground window when finished. The product does not include these test entry points.
 
+## 0.9.17 Taskbar and Start menu
+
+88 core checks passed. The shell test combined a simulated controller B press with the Windows gamepad B virtual key. Hidden icons and Quick Settings remained open. Clicking the Start search field focused Windows Search and opened the keyboard alongside it. A second B selected a letter while Search retained focus and the keyboard stayed open.
+
 ## 0.9.12 Popup notifications
 
 69 core checks and six Windows popup checks passed. The status cue preserved the foreground window and hid on timeout. An owned settings error kept its complete text and closed on acknowledgement. An unowned startup prompt opened successfully and kept long details scrollable. Switch, lock, pause, and error previews were checked in light mode.
