@@ -131,7 +131,7 @@ namespace Gamepad
             }
             if (!Overlay)
             {
-                if (HandleRadial(Holding(down, p, "RadialMenu"), state, now))
+                if (HandleRadial(Holding(down, p, "RadialMenu"), state, p, now))
                     return;
                 UpdatePrecision(Holding(down, p, "Precision"), now);
             }
@@ -220,18 +220,26 @@ namespace Gamepad
                     PrecisionChanged(next);
             }
         }
-        bool HandleRadial(bool held, ControllerState state, long now)
+        bool HandleRadial(bool held, ControllerState state, Profile profile, long now)
         {
             if (!held && !RadialEngaged)
                 return false;
             if (!held)
             {
+                if (!radialVisible)
+                {
+                    EndRadial(-1);
+                    return false;
+                }
                 EndRadial(RadialAction.Select(state, radialChoice) < 0 ? -1 : radialChoice);
                 ResetMapping();
                 return true;
             }
             if (!RadialEngaged)
             {
+                // Keep a moving cursor under the stick until the user recenters to open the wheel.
+                if (PointerMotion.CursorDeflected(state, profile, Gear))
+                    return false;
                 radialAt = now;
                 precisionAt = -1;
                 Gear = selectedGear;
@@ -330,30 +338,54 @@ namespace Gamepad
             value -= i;
             return i;
         }
+        static double CursorDeadZone(Profile profile, PointerGear gear)
+        {
+            return gear == PointerGear.Fine ? .20 : gear == PointerGear.Ultra ? .24 : profile.DeadZone;
+        }
+        internal static bool CursorDeflected(ControllerState state, Profile profile, PointerGear gear)
+        {
+            double dead = CursorDeadZone(profile, gear);
+            double threshold = dead * dead;
+            if (CursorAxisDeflected(profile, "LeftStick", state.LX, state.LY, threshold) ||
+                CursorAxisDeflected(profile, "RightStick", state.RX, state.RY, threshold))
+                return true;
+            foreach (var axis in state.ExtraAxes)
+                if (CursorAxisDeflected(profile, axis.Key, axis.Value.X, axis.Value.Y, threshold))
+                    return true;
+            return false;
+        }
+        static bool CursorAxisDeflected(Profile profile, string id, double x, double y, double threshold)
+        {
+            string action;
+            return x * x + y * y > threshold && profile.Desktop.TryGetValue(id, out action) && action == "Cursor";
+        }
         void Axis(double x, double y, string id, Profile p, double dt, PointerGear gear)
         {
             string action;
             if (!p.Desktop.TryGetValue(id, out action) || action == "None")
                 return;
-            double mag = Math.Sqrt(x * x + y * y), speed = p.Speed, deadZone = p.DeadZone, curve = p.Curve;
+            double mag = Math.Sqrt(x * x + y * y), speed = p.Speed, curve = p.Curve;
+            double deadZone = action == "Cursor" ? CursorDeadZone(p, gear) : p.DeadZone;
             if (action == "Cursor" && gear == PointerGear.Fine)
             {
                 speed = Math.Min(420, speed * (420.0 / 940));
-                deadZone = .20;
                 curve = 1.25;
             }
             else if (action == "Cursor" && gear == PointerGear.Ultra)
             {
                 speed = Math.Min(130, speed * (130.0 / 940));
-                deadZone = .24;
                 curve = 1;
             }
             if (mag <= deadZone)
                 return;
-            double power = Math.Pow((Math.Min(1, mag) - deadZone) / (1 - deadZone), curve) * dt / mag;
+            double power = Math.Pow((Math.Min(1, mag) - deadZone) / (1 - deadZone), curve);
+            double timePerAxis = dt / mag;
             if (action == "Cursor")
             {
-                double v = power * speed;
+                double pixelsPerSecond = power * speed;
+                if (gear != PointerGear.Standard)
+                    pixelsPerSecond = Math.Max(6, pixelsPerSecond);
+                double v = pixelsPerSecond * timePerAxis;
                 mx += x * v;
                 my -= y * v;
                 int dx = Whole(ref mx), dy = Whole(ref my);
@@ -362,8 +394,8 @@ namespace Gamepad
             }
             if (action == "Scroll")
             {
-                wx += x * power * 9;
-                wy += y * power * 9;
+                wx += x * power * timePerAxis * 9;
+                wy += y * power * timePerAxis * 9;
                 int dx = Whole(ref wx), dy = Whole(ref wy);
                 if (dx != 0 || dy != 0)
                     sink.Wheel(dx * 120, dy * 120);
