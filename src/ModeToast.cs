@@ -19,8 +19,6 @@ namespace Gamepad
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         static extern bool SetWindowText(IntPtr window, string text);
-        [DllImport("gdi32.dll")]
-        static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
 
         readonly Timer timeout = new Timer { Interval = 1250 };
         Bitmap frame;
@@ -66,7 +64,7 @@ namespace Gamepad
             }
             DrawFrame(headline, detail, PopupTheme.Current());
 
-            var region = CreateRoundRectRgn(0, 0, width + 1, height + 1, Scale(26), Scale(26));
+            var region = Win.CreateRoundRectRgn(0, 0, width + 1, height + 1, Scale(26), Scale(26));
             if (region != IntPtr.Zero && Win.SetWindowRgn(Handle, region, false) == 0)
                 Win.DeleteObject(region);
 

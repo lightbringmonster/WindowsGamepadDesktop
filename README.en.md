@@ -51,7 +51,7 @@ A three-second hold preserves the current mode. The lock blocks the switch gestu
 
 When used individually, LB and RB act on release. Pressing them together suppresses both individual actions. After a mode change, pause, or disconnection, return the controls to neutral.
 
-Move either stick to highlight a command. Release RT to run it or center the stick to cancel. The wheel contains Start, Task View, switch window, show desktop, lock screen, volume up and down, undo, paste, and copy. Previously saved RT bindings stay active. To enable the wheel on an existing profile, select `RadialMenu` in its desktop bindings.
+Move either stick to highlight a command. Release RT to run it or center the stick to cancel. The wheel contains Start, Task View, Show Desktop, sound output, sound input, undo, paste, and copy. In either sound list, use Up and Down or the left stick to choose a device. B confirms and A goes back by default. The selection changes the Windows system default and preserves the separate default communications device. Previously saved RT bindings stay active. To enable the wheel on an existing profile, select `RadialMenu` in its desktop bindings.
 
 ## On-screen keyboard
 

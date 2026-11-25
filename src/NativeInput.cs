@@ -29,6 +29,8 @@ namespace Gamepad
         [DllImport("user32.dll")]
         internal static extern int SetWindowRgn(IntPtr window, IntPtr region, bool redraw);
         [DllImport("gdi32.dll")]
+        internal static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
+        [DllImport("gdi32.dll")]
         internal static extern bool DeleteObject(IntPtr handle);
         [DllImport("user32.dll")]
         internal static extern bool SetLayeredWindowAttributes(IntPtr window, uint color, byte alpha, uint flags);

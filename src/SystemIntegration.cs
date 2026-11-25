@@ -192,7 +192,7 @@ namespace Gamepad
                                        locked =>
                                        {
                                            systemBlocked = locked;
-                                           CloseKeyboard();
+                                           CloseOverlay();
                                        },
                                        () => ShowSettings(), () => ExitThread(), Tick);
         }

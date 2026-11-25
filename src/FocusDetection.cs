@@ -199,7 +199,8 @@ namespace Gamepad
         bool CanRequestKeyboard
         {
             get {
-                return Config.AutoKeyboard && !keyboard.Visible && !game && !paused && !systemBlocked;
+                return Config.AutoKeyboard && !keyboard.Visible && !audioWindow.Visible && !game && !paused &&
+                       !systemBlocked;
             }
         }
 
@@ -287,7 +288,7 @@ namespace Gamepad
         }
         partial void CheckFocus(long now)
         {
-            if (game || paused || systemBlocked)
+            if (game || paused || systemBlocked || audioWindow.Visible)
                 return;
             if (pressPoint.HasValue && !WithinClickRange(pressPoint.Value))
                 pressPoint = null;
@@ -327,11 +328,11 @@ namespace Gamepad
                     else if (badSince < 0)
                         badSince = now;
                     else if (now - badSince >= 125)
-                        CloseKeyboard();
+                        CloseOverlay();
                 }
             }
             if (watch && focusedId != null && now - lastGood > 1700)
-                CloseKeyboard();
+                CloseOverlay();
             if (now >= requestAfter && (now >= sampleAt || (focus.Dirty && now >= sampleAt - 70)))
             {
                 focus.Request(focusGeneration);

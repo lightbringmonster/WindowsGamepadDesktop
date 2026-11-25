@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 namespace Gamepad
 {
@@ -20,20 +21,24 @@ namespace Gamepad
         readonly KeyboardModel model;
         readonly KeyboardWindow keyboard;
         readonly RadialMenuWindow radialMenu = new RadialMenuWindow();
+        readonly AudioDeviceWindow audioWindow = new AudioDeviceWindow();
+        readonly IAudioDevices audioDevices;
         readonly NotifyIcon tray = new NotifyIcon();
         readonly ContextMenuStrip menu = new ContextMenuStrip();
         IControllerDevice activeDevice;
         string selected;
         long nextScan;
         bool paused, game, modeLocked, closing;
+        AudioFlow audioFlow;
         IntPtr target, radialTarget, observed, lastApp;
         readonly ApplicationProfiles policy = new ApplicationProfiles();
         bool firstRule = true;
         public Host(Settings cfg, IControllerProvider provider, IInputSink output, bool openSettings,
-                    string settingsPath = null)
+                    string settingsPath = null, IAudioDevices audioDevices = null)
         {
             Config = cfg;
             this.settingsPath = settingsPath ?? SettingsStore.Location;
+            this.audioDevices = audioDevices ?? new WindowsAudioDevices();
             game = cfg.StartsNative;
             sink = output;
             manager = new DeviceManager(provider);
@@ -63,7 +68,7 @@ namespace Gamepad
                 if (TargetReady())
                     sink.Text(v);
             };
-            model.Close = CloseKeyboard;
+            model.Close = CloseOverlay;
             tray.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
             tray.Text = "Windows Gamepad Desktop";
             tray.ContextMenuStrip = menu;
@@ -130,13 +135,13 @@ namespace Gamepad
         }
         bool TargetReady()
         {
-            return keyboard.Visible && !game && !paused && target != IntPtr.Zero &&
+            return (keyboard.Visible || audioWindow.Visible) && !game && !paused && target != IntPtr.Zero &&
                    target == Win.GetForegroundWindow() && Win.IsWindow(target);
         }
         void ToggleKeyboard()
         {
             if (keyboard.Visible)
-                CloseKeyboard();
+                CloseOverlay();
             else
                 OpenKeyboard(Rectangle.Empty, Config.StartLayout);
         }
@@ -147,6 +152,8 @@ namespace Gamepad
             var foreground = Win.GetForegroundWindow();
             if (foreground == IntPtr.Zero || foreground == keyboard.Handle)
                 return;
+            if (audioWindow.Visible)
+                CloseOverlay();
             pointer.Suspend();
             target = foreground;
             model.Open(layout);
@@ -159,17 +166,23 @@ namespace Gamepad
         {
             if (!TargetReady())
             {
-                CloseKeyboard();
+                CloseOverlay();
                 return;
             }
-            model.Command(cmd);
-            keyboard.Invalidate();
+            if (audioWindow.Visible)
+                AudioCommand(cmd);
+            else
+            {
+                model.Command(cmd);
+                keyboard.Invalidate();
+            }
         }
-        void CloseKeyboard()
+        void CloseOverlay()
         {
             pointer.Suspend();
             if (keyboard.Visible)
                 keyboard.Hide();
+            audioWindow.Hide();
             target = IntPtr.Zero;
             model.ResetText();
             OnKeyboardClosed();
@@ -204,9 +217,70 @@ namespace Gamepad
             radialTarget = IntPtr.Zero;
             if (radialMenu.Visible)
                 radialMenu.Hide();
-            if (selectedAction >= 0 && window != IntPtr.Zero && window == Win.GetForegroundWindow() &&
-                Win.IsWindow(window))
-                engine.Ledger.Tap(RadialAction.Items[selectedAction].Keys);
+            if (selectedAction < 0 || window == IntPtr.Zero || window != Win.GetForegroundWindow() ||
+                !Win.IsWindow(window))
+                return;
+            var action = RadialAction.Items[selectedAction];
+            if (action.Audio.HasValue)
+                OpenAudio(window, action.Audio.Value);
+            else
+                engine.Ledger.Tap(action.Keys);
+        }
+        void OpenAudio(IntPtr window, AudioFlow flow)
+        {
+            AudioEndpoint[] devices;
+            try
+            {
+                devices = audioDevices.List(flow);
+            }
+            catch (ExternalException)
+            {
+                Notify("无法读取声音设备");
+                return;
+            }
+            if (window != Win.GetForegroundWindow())
+                return;
+            pointer.Suspend();
+            CancelFocusRequest();
+            target = window;
+            audioFlow = flow;
+            audioWindow.Present(window, flow, devices, Config.For(selected));
+            engine.SetContext(game, paused, audioWindow.Visible);
+        }
+        void AudioCommand(string command)
+        {
+            switch (command)
+            {
+            case "Up":
+                audioWindow.Move(-1);
+                break;
+            case "Down":
+                audioWindow.Move(1);
+                break;
+            case "Close":
+                CloseOverlay();
+                break;
+            case "Select":
+            case "Done":
+                var device = audioWindow.Selection;
+                if (device == null)
+                    return;
+                CloseOverlay();
+                try
+                {
+                    audioDevices.SetDefault(audioFlow, device.Id);
+                    Notify("已切换" + (audioFlow == AudioFlow.Input ? "声音输入" : "声音输出") + " · " + device.Name);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    Notify("未能切换声音设备 · " + ex.Message);
+                }
+                catch (ExternalException)
+                {
+                    Notify("未能切换声音设备 · 请检查 Windows 声音设置");
+                }
+                break;
+            }
         }
         void ToggleGame()
         {
@@ -228,13 +302,13 @@ namespace Gamepad
                 return;
             }
             game = value;
-            CloseKeyboard();
+            CloseOverlay();
             Notify(applicationRule && paused ? ModeName : "已切换 · " + (game ? "原生手柄" : "桌面键鼠"));
         }
         internal void Pause(bool value)
         {
             paused = value;
-            CloseKeyboard();
+            CloseOverlay();
             Notify(ModeName);
         }
         partial void Notify(string message);
@@ -271,8 +345,8 @@ namespace Gamepad
             IntPtr fg = Win.GetForegroundWindow();
             if (fg != observed && engine.RadialEngaged)
                 engine.CancelRadial();
-            if (keyboard.Visible && (fg != target || !Win.IsWindow(target)))
-                CloseKeyboard();
+            if ((keyboard.Visible || audioWindow.Visible) && (fg != target || !Win.IsWindow(target)))
+                CloseOverlay();
             if (fg != IntPtr.Zero)
                 CheckForeground(fg);
             bool scan = now >= nextScan;
@@ -296,7 +370,7 @@ namespace Gamepad
                 selected = id;
                 activeDevice = active;
                 engine.Reset();
-                CloseKeyboard();
+                CloseOverlay();
             }
             if (id != null && !SessionBlocked)
             {
@@ -310,7 +384,7 @@ namespace Gamepad
             else
                 engine.Reset();
             CheckFocus(now);
-            messages.SetPollInterval(id == null ? (keyboard.Visible ? 100 : 250) : 15);
+            messages.SetPollInterval(id == null ? (keyboard.Visible || audioWindow.Visible ? 100 : 250) : 15);
         }
         internal void Apply(Settings next)
         {
@@ -326,7 +400,7 @@ namespace Gamepad
             }
             Config = next;
             nextScan = 0;
-            CloseKeyboard();
+            CloseOverlay();
         }
         bool SessionBlocked
         {
@@ -365,7 +439,7 @@ namespace Gamepad
             if (closing)
                 return;
             closing = true;
-            CloseKeyboard();
+            CloseOverlay();
             engine.Reset();
             pointer.Dispose();
             RememberMode();
@@ -375,6 +449,7 @@ namespace Gamepad
             menu.Dispose();
             keyboard.Dispose();
             radialMenu.Dispose();
+            audioWindow.Dispose();
             base.ExitThreadCore();
         }
     }
