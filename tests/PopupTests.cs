@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -103,6 +104,38 @@ namespace Gamepad
                     action.Start();
                     Check(longNotice.ShowDialog() == DialogResult.OK,
                           "startup-style prompt returns on acknowledgement");
+                }
+
+                owner.FormBorderStyle = FormBorderStyle.None;
+                owner.Bounds = Screen.FromControl(owner).Bounds;
+                owner.TopMost = true;
+                FocusOwnedWindow(owner.Handle);
+                GameRuleToast(owner, "Native", "原生手柄 · 应用规则",
+                              Path.Combine(directory, "game-mode-continued.png"));
+                GameRuleToast(owner, "Desktop", "已切换 · 原生手柄",
+                              Path.Combine(directory, "game-mode-switched.png"));
+            }
+        }
+
+        static void GameRuleToast(Form gameWindow, string startupMode, string message, string screenshot)
+        {
+            string process;
+            using (var current = Process.GetCurrentProcess())
+                process = current.ProcessName + ".exe";
+            var cfg = new Settings { StartupMode = startupMode, GameApps = new[] { process } };
+            var provider = new SimProvider { Devices = new IControllerDevice[0] };
+            using (var host = new Host(cfg, provider, new Capture(), false))
+            {
+                try
+                {
+                    Await(() => host.ModeName == "原生手柄" && IsWindowVisible(FindWindow(null, message)),
+                          "foreground game rule displays " + message, 1100);
+                    Check(Win.GetForegroundWindow() == gameWindow.Handle, "game mode toast preserves game focus");
+                    SnapPopupWindow(FindWindow(null, message), screenshot);
+                }
+                finally
+                {
+                    host.ExitThread();
                 }
             }
         }
