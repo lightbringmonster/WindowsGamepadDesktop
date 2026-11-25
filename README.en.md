@@ -23,6 +23,8 @@ The build writes to `bin`. To move the app, keep the executable and its sibling 
 
 ## Getting started
 
+Run `WindowsGamepadDesktop.exe` to start in the notification area. Double-click its icon or choose **设置** (Settings) from the icon's menu to open settings. The `--settings` argument also opens settings.
+
 1. Connect an XInput-compatible controller. For a Beitong controller, select PC/XInput mode and connect via the receiver or USB. **设备** (Devices) shows the slot and live input values. Windows may identify the device as an Xbox 360-compatible controller.
 2. Release all controls, then use the left stick to move the pointer. Press B to click. A direct gamepad click on a supported edit field can open the keyboard automatically. RB opens it manually.
 3. Hold LB + RB, then release between two and three seconds to switch between desktop and native gamepad mode. At two seconds, a prompt tells you to release. The confirmation appears after the switch. Hold for three seconds to lock or unlock the current mode. This works in windowed and full-screen applications.

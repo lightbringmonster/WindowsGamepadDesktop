@@ -24,9 +24,11 @@ namespace Gamepad
             using (var mutex = new Mutex(true, @"Local\WindowsGamepadDesktop.Portable.v1", out first))
             {
                 bool exit = Array.IndexOf(args, "--exit") >= 0;
+                bool openSettings = !exit && Array.IndexOf(args, "--settings") >= 0 &&
+                                    Array.IndexOf(args, "--tray") < 0;
                 if (!first)
                 {
-                    if (Array.IndexOf(args, "--tray") < 0)
+                    if (exit || openSettings)
                         SendCommand(exit);
                     return;
                 }
@@ -45,12 +47,8 @@ namespace Gamepad
                     {
                         error = ex.Message;
                     }
-                if (error != null)
-                    PopupNotice.ShowNotice("本次启动已使用默认设置。原配置会保留到下次保存。\n" + error,
-                                           "配置无法载入");
-                var host = new Host(cfg, new XInputControllerProvider(), new NativeInput(),
-                                    Array.IndexOf(args, "--tray") < 0 && (!File.Exists(SettingsStore.Location) ||
-                                                                          Array.IndexOf(args, "--settings") >= 0));
+                var host = new Host(cfg, new XInputControllerProvider(), new NativeInput(), openSettings,
+                                    configurationLoadWarning: error);
                 Application.ThreadException += (s, e) =>
                 {
                     host.Pause(true);
