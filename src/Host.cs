@@ -138,6 +138,22 @@ namespace Gamepad
             return (keyboard.Visible || audioWindow.Visible) && !game && !paused && target != IntPtr.Zero &&
                    target == Win.GetForegroundWindow() && Win.IsWindow(target);
         }
+        bool ShouldConsumeShellBack()
+        {
+            if (closing || paused || game || systemBlocked || activeDevice == null)
+                return false;
+            var foreground = Win.GetForegroundWindow();
+            bool overlay = keyboard.Visible || audioWindow.Visible;
+            var profile = Config.For(activeDevice.Id);
+            string action;
+            if (overlay)
+                return foreground == target && profile.Keyboard.TryGetValue("B", out action) &&
+                       action == "Select" && Win.IsShellBackSurface(foreground);
+            if (!profile.Desktop.TryGetValue("B", out action) || action != "MouseLeft")
+                return false;
+            return Win.IsShellBackSurface(foreground) ||
+                   Win.IsShellBackSurface(Win.GetAncestor(Win.WindowFromPoint(Cursor.Position), 2));
+        }
         void ToggleKeyboard()
         {
             if (keyboard.Visible)
@@ -319,19 +335,8 @@ namespace Gamepad
             observed = hwnd;
             if (!Win.IsShellMenu(hwnd))
                 lastApp = hwnd;
-            int pid;
-            Win.GetWindowThreadProcessId(hwnd, out pid);
-            string name = "";
-            try
-            {
-                using (var p = Process.GetProcessById(pid)) name = p.ProcessName + ".exe";
-            }
-            catch (ArgumentException)
-            {
-            }
-            catch (InvalidOperationException)
-            {
-            }
+            string process = Win.ProcessNameOf(hwnd);
+            string name = process.Length == 0 ? "" : process + ".exe";
             firstRule = false;
             bool? transition = policy.Enter(name, Config.GameApps);
             if (transition.HasValue)
