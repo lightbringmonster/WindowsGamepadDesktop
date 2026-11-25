@@ -11,6 +11,7 @@ namespace Gamepad
     {
         readonly DeviceManager manager;
         readonly MappingEngine engine;
+        readonly PointerWorker pointer;
         readonly IInputSink sink;
         readonly string settingsPath;
         internal Settings Config;
@@ -20,6 +21,7 @@ namespace Gamepad
         readonly KeyboardWindow keyboard;
         readonly NotifyIcon tray = new NotifyIcon();
         readonly ContextMenuStrip menu = new ContextMenuStrip();
+        IControllerDevice activeDevice;
         string selected;
         long nextScan;
         bool paused, game, modeLocked, closing;
@@ -34,7 +36,7 @@ namespace Gamepad
             game = cfg.StartsNative;
             sink = output;
             manager = new DeviceManager(provider);
-            engine = new MappingEngine(sink);
+            engine = new MappingEngine(sink, false);
             engine.SetContext(game, false, false);
             engine.ToggleMode = ToggleGame;
             engine.ModeSwitchReady = ShowSwitchPrompt;
@@ -64,6 +66,7 @@ namespace Gamepad
             menu.Opening += (s, e) => Menu();
             tray.DoubleClick += (s, e) => ShowSettings();
             tray.Visible = true;
+            pointer = new PointerWorker(sink, Win.GetForegroundWindow);
             InitializeSystem();
             if (openSettings)
                 ShowSettings();
@@ -140,6 +143,7 @@ namespace Gamepad
             var foreground = Win.GetForegroundWindow();
             if (foreground == IntPtr.Zero || foreground == keyboard.Handle)
                 return;
+            pointer.Suspend();
             target = foreground;
             model.Open(layout);
             engine.SetContext(game, paused, true);
@@ -159,6 +163,7 @@ namespace Gamepad
         }
         void CloseKeyboard()
         {
+            pointer.Suspend();
             if (keyboard.Visible)
                 keyboard.Hide();
             target = IntPtr.Zero;
@@ -234,19 +239,32 @@ namespace Gamepad
             if (scan)
                 nextScan = now + 850;
             foreach (var d in manager.Devices)
-                if (scan || selected == d.Id ||
+                if (selected == d.Id)
+                    States[d.Id] = pointer.Latest();
+                else if (scan ||
                     (SettingsVisible && States.ContainsKey(d.Id) && States[d.Id].Connected))
                     States[d.Id] = d.Read();
-            var active = manager.Select(Config.Primary, States.Where(p => p.Value.Connected).Select(p => p.Key));
+            // Keep using the selected controller until discovery or a fresh sample requires reselection.
+            var active = selected != null && manager.Primary == selected && States[selected].Connected &&
+                         (String.IsNullOrEmpty(Config.Primary) || Config.Primary == selected)
+                             ? activeDevice
+                             : manager.Select(Config.Primary, States.Where(p => p.Value.Connected).Select(p => p.Key));
             string id = active == null ? null : active.Id;
             if (id != selected)
             {
+                pointer.Bind(active, id == null ? null : States[id]);
                 selected = id;
+                activeDevice = active;
                 engine.Reset();
                 CloseKeyboard();
             }
             if (id != null && !SessionBlocked)
-                engine.Tick(States[id], Config.For(id), now);
+            {
+                var profile = Config.For(id);
+                engine.Tick(States[id], profile, now);
+                if (engine.CanMove)
+                    pointer.Allow(profile, fg, engine.PrecisionActive);
+            }
             else
                 engine.Reset();
             CheckFocus(now);
@@ -307,6 +325,7 @@ namespace Gamepad
             closing = true;
             CloseKeyboard();
             engine.Reset();
+            pointer.Dispose();
             RememberMode();
             StopSystem();
             tray.Visible = false;

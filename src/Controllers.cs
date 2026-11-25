@@ -25,7 +25,8 @@ namespace Gamepad
     public sealed class ControllerCapabilities
     {
         public string[] Controls;
-        public bool HasGyroscope, HasAccelerometer, HasBattery;
+        public bool HasGyroscope, HasAccelerometer;
+        public volatile bool HasBattery;
     }
     public interface IControllerDevice
     {
@@ -33,6 +34,7 @@ namespace Gamepad
         string PhysicalKey { get; } // Shared across providers only when correlation is trustworthy.
         string Name { get; }
         ControllerCapabilities Capabilities { get; }
+        // Return a stable snapshot. The primary device is read on the input worker.
         ControllerState Read();
     }
     public interface IControllerProvider
@@ -97,6 +99,8 @@ namespace Gamepad
         readonly ControllerCapabilities caps = new ControllerCapabilities { Controls = Standard };
         long batteryAt;
         int? level;
+        uint packetNumber;
+        ControllerState snapshot;
         public XInputDevice(int slot)
         {
             index = (uint)slot;
@@ -133,6 +137,7 @@ namespace Gamepad
                 batteryAt = 0;
                 level = null;
                 caps.HasBattery = false;
+                snapshot = null;
                 return new ControllerState();
             }
             long now = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -145,9 +150,13 @@ namespace Gamepad
                 caps.HasBattery = level.HasValue;
                 batteryAt = now + 15 * System.Diagnostics.Stopwatch.Frequency;
             }
-            var state = Decode(packet);
-            state.BatteryLevel = level;
-            return state;
+            if (snapshot == null || packet.Number != packetNumber || snapshot.BatteryLevel != level)
+            {
+                snapshot = Decode(packet);
+                snapshot.BatteryLevel = level;
+                packetNumber = packet.Number;
+            }
+            return snapshot;
         }
         static double Axis(short value)
         {

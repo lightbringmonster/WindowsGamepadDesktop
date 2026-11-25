@@ -5,7 +5,7 @@ namespace Gamepad
 {
     public sealed class MappingEngine
     {
-        readonly IInputSink sink;
+        readonly PointerMotion motion;
         public readonly InputLedger Ledger;
         public Action ToggleMode, ToggleModeLock, ToggleKeyboard;
         internal Action<int[]> MappedAction;
@@ -18,11 +18,15 @@ namespace Gamepad
         readonly Dictionary<string, long> repeats = new Dictionary<string, long>();
         readonly ModeGesture modeGesture = new ModeGesture();
         bool neutral = true, lt, rt;
-        long previousTime = -1;
-        double mx, my, wx, wy;
-        public MappingEngine(IInputSink output)
+        internal bool CanMove { get { return !neutral && !Game && !Paused && !Overlay; } }
+        internal bool PrecisionActive { get; private set; }
+        public MappingEngine(IInputSink output) : this(output, true)
         {
-            sink = output;
+        }
+        internal MappingEngine(IInputSink output, bool mapMotion)
+        {
+            if (mapMotion)
+                motion = new PointerMotion(output);
             Ledger = new InputLedger(output);
         }
         public void Reset()
@@ -36,8 +40,9 @@ namespace Gamepad
             prior.Clear();
             repeats.Clear();
             neutral = true;
-            previousTime = -1;
-            mx = my = wx = wy = 0;
+            PrecisionActive = false;
+            if (motion != null)
+                motion.Reset();
             lt = rt = false;
         }
         public void SetContext(bool game, bool paused, bool overlay)
@@ -79,8 +84,7 @@ namespace Gamepad
                 foreach (var axis in state.ExtraAxes)
                     AddNav(down, axis.Value.X, axis.Value.Y, Get(p.Keyboard, axis.Key));
             }
-            double dt = previousTime < 0 ? 0 : Math.Min(.05, Math.Max(0, (now - previousTime) / 1000.0));
-            previousTime = now;
+            double dt = motion == null ? 0 : motion.Elapsed(now);
             if (neutral)
             {
                 Ledger.Release();
@@ -105,7 +109,7 @@ namespace Gamepad
                 return;
             }
             var wanted = new List<int>();
-            bool precise = false;
+            PrecisionActive = false;
             var mapping = Overlay ? p.Keyboard : p.Desktop;
             foreach (string id in prior.Union(down).ToArray())
             {
@@ -147,7 +151,7 @@ namespace Gamepad
                 }
                 if (action == "Precision")
                 {
-                    precise |= isDown && !deferred;
+                    PrecisionActive |= isDown && !deferred;
                     continue;
                 }
                 int[] keys = Tokens(action);
@@ -169,13 +173,8 @@ namespace Gamepad
                 }
             }
             Ledger.Sync(wanted);
-            if (!Overlay)
-            {
-                Axis(state.LX, state.LY, Get(mapping, "LeftStick"), p, dt, precise);
-                Axis(state.RX, state.RY, Get(mapping, "RightStick"), p, dt, precise);
-                foreach (var axis in state.ExtraAxes)
-                    Axis(axis.Value.X, axis.Value.Y, Get(mapping, axis.Key), p, dt, precise);
-            }
+            if (motion != null && !Overlay)
+                motion.Apply(state, p, dt, PrecisionActive);
             prior = down;
         }
         static string Get(Dictionary<string, string> map, string id)
@@ -216,16 +215,47 @@ namespace Gamepad
                 return;
             down.Add("@" + (Math.Abs(x) > Math.Abs(y) ? (x > 0 ? "Right" : "Left") : (y > 0 ? "Up" : "Down")));
         }
+    }
+
+    internal sealed class PointerMotion
+    {
+        readonly IInputSink sink;
+        double previousTime = -1;
+        double mx, my, wx, wy;
+
+        internal PointerMotion(IInputSink sink)
+        {
+            this.sink = sink;
+        }
+        internal void Reset()
+        {
+            previousTime = -1;
+            mx = my = wx = wy = 0;
+        }
+        internal double Elapsed(double now)
+        {
+            double dt = previousTime < 0 ? 0 : Math.Min(.05, Math.Max(0, (now - previousTime) / 1000));
+            previousTime = now;
+            return dt;
+        }
+        internal void Apply(ControllerState state, Profile profile, double dt, bool precise)
+        {
+            Axis(state.LX, state.LY, "LeftStick", profile, dt, precise);
+            Axis(state.RX, state.RY, "RightStick", profile, dt, precise);
+            foreach (var axis in state.ExtraAxes)
+                Axis(axis.Value.X, axis.Value.Y, axis.Key, profile, dt, precise);
+        }
         static int Whole(ref double value)
         {
             int i = (int)value;
             value -= i;
             return i;
         }
-        void Axis(double x, double y, string action, Profile p, double dt, bool precise)
+        void Axis(double x, double y, string id, Profile p, double dt, bool precise)
         {
             double mag = Math.Sqrt(x * x + y * y);
-            if (mag <= p.DeadZone || action == "None")
+            string action;
+            if (mag <= p.DeadZone || !p.Desktop.TryGetValue(id, out action))
                 return;
             double power = Math.Pow((Math.Min(1, mag) - p.DeadZone) / (1 - p.DeadZone), p.Curve) * dt / mag;
             if (action == "Cursor")
