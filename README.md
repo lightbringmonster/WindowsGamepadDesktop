@@ -8,7 +8,7 @@ Windows 11 x64 手柄桌面控制器。使用 Xbox 字母标记，桌面与屏�
 
 ![Windows Gamepad Desktop 拼音键盘，显示整句候选与手柄按键提示](docs/images/keyboard-pinyin.png)
 
-[下载 Windows x64 便携版](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest)
+[下载 Windows x64 便携版](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest) · [v1.0.0 发布说明](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/v1.0.0) · [0.9.x 历史归档](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/archive-0.9)
 
 ## 从源码构建
 
@@ -29,7 +29,7 @@ cd WindowsGamepadDesktop
 2. 让北通手柄通过接收器或 USB 以 PC / XInput 模式连接。在「设备」中查看槽位、实时摇杆、扳机和按键。Windows 可能显示 Xbox 360 兼容名称。无线方式是否可用取决于手柄当前输出的协议。
 3. 放开摇杆和所有按键，再用左摇杆移动指针。用 B 直接点击可编辑输入框可自动弹出键盘，RB 可手动呼出。**同时按住 LB + RB 约 2 秒后松开**，可在桌面键鼠与原生手柄之间切换。到 2 秒时屏幕会提示「松开切换」，松手确认后显示「已切换」。持续按到 3 秒可锁定或解锁当前模式。
 4. 在「应用规则」添加游戏的实际进程文件名并保存。便携包预置 `Playnite.FullscreenApp.exe`，可在列表中删除。未锁定时，离开匹配进程会回到桌面，切回该进程会再次使用原生手柄。手动切换适用于窗口化和全屏。
-5. 需要随 Windows 登录启动时，在托盘勾选「登录时自启动」。先把便携目录放在长期使用的位置。移动目录后，重新从新路径运行并勾选一次。初始默认关闭。
+5. 要随 Windows 登录启动，先将整个便携目录放到长期使用的位置，再从该位置运行程序，右键通知区域的应用图标并勾选「登录时自启动」。下次登录时程序会常驻通知区域。移动目录后，需从新路径运行并重新勾选。初始默认关闭。
 
 **紧急暂停**使用 Ctrl + Alt + F12。恢复时从托盘取消「暂停映射」。快捷键被占用时，设备页会显示提示。再次双击正在运行的程序会打开设置。
 

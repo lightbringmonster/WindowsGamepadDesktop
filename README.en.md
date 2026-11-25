@@ -6,7 +6,7 @@ Use an XInput gamepad as a mouse and keyboard on Windows 11 x64. The default lay
 
 ![Pinyin on-screen keyboard with a sentence candidate and controller shortcuts](docs/images/keyboard-pinyin.png)
 
-[Download the Windows x64 portable package](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest)
+[Download the Windows x64 portable package](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest) · [v1.0.0 release notes](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/v1.0.0) · [0.9.x archive](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/archive-0.9)
 
 ## Build from source
 
@@ -27,7 +27,7 @@ The build writes to `bin`. To move the app, keep the executable and its sibling 
 2. Release all controls, then use the left stick to move the pointer. Press B to click. A direct gamepad click on a supported edit field can open the keyboard automatically. RB opens it manually.
 3. Hold LB + RB, then release between two and three seconds to switch between desktop and native gamepad mode. At two seconds, a prompt tells you to release. The confirmation appears after the switch. Hold for three seconds to lock or unlock the current mode. This works in windowed and full-screen applications.
 4. In **应用规则** (App Rules), add a game's executable name to enable native mode when it becomes active. The default list includes `Playnite.FullscreenApp.exe`. When unlocked, leaving a matched app restores desktop mode and returning to it enables native mode again.
-5. To start at sign-in, enable **登录时自启动** in the notification area menu. Keep the app in its permanent location. Re-enable this option if you move it.
+5. To start with Windows, put the entire portable folder in its permanent location, run the app from there, and enable **登录时自启动** in the notification area menu. At the next sign-in, the app starts in the notification area. Run it from the new location and re-enable this option after moving the folder. This option is initially off.
 
 **Ctrl + Alt + F12** pauses input mapping. Clear **暂停映射** in the notification area menu to resume. Double-click the notification area icon to open settings.
 
