@@ -10,7 +10,7 @@ namespace Gamepad
     {
         internal IntPtr Window;
         internal int Generation;
-        internal string Id;
+        internal string Id, AutomationId;
         internal bool Editable, Password;
         internal Rectangle Bounds;
     }
@@ -147,6 +147,7 @@ namespace Gamepad
             r.Id = e.Current.ProcessId + "/" + String.Join(".", runtime);
             if (!e.Current.IsEnabled || !e.Current.HasKeyboardFocus)
                 return r;
+            r.AutomationId = e.Current.AutomationId;
             var type = e.Current.ControlType;
             r.Password = e.Current.IsPassword;
             object pattern;
@@ -199,7 +200,8 @@ namespace Gamepad
         bool CanRequestKeyboard
         {
             get {
-                return Config.AutoKeyboard && !keyboard.Visible && !game && !paused && !systemBlocked;
+                return Config.AutoKeyboard && !keyboard.Visible && !audioWindow.Visible && !game && !paused &&
+                       !systemBlocked;
             }
         }
 
@@ -285,9 +287,24 @@ namespace Gamepad
             badSince = -1;
             lastGood = clock.ElapsedMilliseconds;
         }
+        internal static bool IsStartSearchHandoff(string source, string destination, string automationId)
+        {
+            return String.Equals(source, "StartMenuExperienceHost", StringComparison.OrdinalIgnoreCase) &&
+                   Win.IsSearchProcess(destination) &&
+                   String.Equals(automationId, "SearchTextBox", StringComparison.Ordinal);
+        }
+        bool MatchesFocusRequest(FocusInfo sample)
+        {
+            if (requestedPoint.HasValue && !sample.Bounds.Contains(requestedPoint.Value))
+                return false;
+            return sample.Window == requestedWindow ||
+                   (requestedPoint.HasValue && sample.AutomationId == "SearchTextBox" &&
+                    IsStartSearchHandoff(Win.ProcessNameOf(requestedWindow), Win.ProcessNameOf(sample.Window),
+                                         sample.AutomationId));
+        }
         partial void CheckFocus(long now)
         {
-            if (game || paused || systemBlocked)
+            if (game || paused || systemBlocked || audioWindow.Visible)
                 return;
             if (pressPoint.HasValue && !WithinClickRange(pressPoint.Value))
                 pressPoint = null;
@@ -301,8 +318,7 @@ namespace Gamepad
             if (sample != null && sample.Generation == focusGeneration && now >= requestAfter &&
                 sample.Window == Win.GetForegroundWindow())
             {
-                if (!watch && eligible && sample.Editable && sample.Window == requestedWindow &&
-                    (!requestedPoint.HasValue || sample.Bounds.Contains(requestedPoint.Value)))
+                if (!watch && eligible && sample.Editable && MatchesFocusRequest(sample))
                 {
                     OpenKeyboard(sample.Bounds, sample.Password ? "English" : Config.StartLayout);
                     focusGeneration++;
@@ -327,11 +343,11 @@ namespace Gamepad
                     else if (badSince < 0)
                         badSince = now;
                     else if (now - badSince >= 125)
-                        CloseKeyboard();
+                        CloseOverlay();
                 }
             }
             if (watch && focusedId != null && now - lastGood > 1700)
-                CloseKeyboard();
+                CloseOverlay();
             if (now >= requestAfter && (now >= sampleAt || (focus.Dirty && now >= sampleAt - 70)))
             {
                 focus.Request(focusGeneration);

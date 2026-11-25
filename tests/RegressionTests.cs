@@ -13,6 +13,7 @@ namespace Gamepad
             var returning = new Capture();
             var returnEngine = new MappingEngine(returning);
             var profile = new Profile();
+            profile.Desktop["RT"] = "MouseLeft";
             var pointerChanges = new List<bool>();
             returnEngine.Ledger.LeftButtonChanged = pointerChanges.Add;
             returnEngine.Tick(Pad(), profile, 0);

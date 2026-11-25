@@ -42,6 +42,7 @@ namespace Gamepad
             var output = new Capture();
             var engine = new MappingEngine(output);
             var p = new Profile();
+            p.Desktop["RT"] = "MouseLeft";
             int modes = 0, keyboards = 0;
             engine.ToggleMode = delegate
             {

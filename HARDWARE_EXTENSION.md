@@ -8,7 +8,7 @@
 
 1. 在独立文件或项目中实现 IControllerProvider，其 Devices 返回稳定的 IControllerDevice 对象。当前 DeviceManager 在构造时登记对象，适合槽位型后端。HID 设备应保留稳定代理槽并在代理内部处理到达与移除；若真实设备集合必须动态增长，可在设备管理层扩充枚举刷新。映射、键盘和模式逻辑可保持原有接口。
 2. 每个对象提供 Id、PhysicalKey、Name、Capabilities 和 Read()。Id 是设置关联键，应带后端命名空间。PhysicalKey 是跨后端去重依据。Windows XInput 的 xinput:0 至 xinput:3 是运行时槽位，不能作为通用硬件序列号。将可信的 PnP 容器信息或用户显式关联映射到共同键，再按注册顺序选择一个读取者。无法建立可靠关联时，避免同时为同一设备开启两个读取者。
-3. Read() 返回瞬时 ControllerState，断开时返回 Connected=false。按钮集合使用稳定符号名，左右摇杆归一化到 −1…1，右及上为正，扳机到 0…1。读取应有界且快速；阻塞式 HID 读取放在后端线程，向主循环提供最新快照。重连后先返回真实状态，映射引擎会等待回中。
+3. Read() 返回瞬时 ControllerState，断开时返回 Connected=false。按钮集合使用稳定符号名，左右摇杆归一化到 −1…1，右及上为正，扳机到 0…1。主控由输入线程读取，其他设备由界面线程扫描。同一设备的调用保持串行。可以复用未变化的快照，返回后应保持快照及其中的集合不变。读取应有界且快速，阻塞式 HID 读取放在后端线程。重连后先返回真实状态，映射引擎会等待回中。
 4. 在 Host 构造的设备管理器接线处组合新 Provider，或增加聚合 Provider。新的设备层仅返回状态，不发送 Win32 输入。tests/Tests.cs 中的 SimProvider、SimDevice 和 tests/MappingTests.cs 的 Capture 可用于开发硬件无关测试。
 
 ## 独立扩展按键

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
 using System.Runtime.InteropServices;
 namespace Gamepad
 {
@@ -13,6 +15,33 @@ namespace Gamepad
     }
     internal static class Win
     {
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct PaintInfo
+        {
+            internal IntPtr Dc;
+            internal int Erase;
+            internal int Left, Top, Right, Bottom;
+            internal int Restore, Incremental;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+            internal byte[] Reserved;
+        }
+        [DllImport("user32.dll")]
+        internal static extern bool SetWindowPos(IntPtr window, IntPtr order, int x, int y, int width, int height,
+                                                 uint flags);
+        [DllImport("user32.dll")]
+        internal static extern int SetWindowRgn(IntPtr window, IntPtr region, bool redraw);
+        [DllImport("gdi32.dll")]
+        internal static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
+        [DllImport("gdi32.dll")]
+        internal static extern bool DeleteObject(IntPtr handle);
+        [DllImport("user32.dll")]
+        internal static extern bool SetLayeredWindowAttributes(IntPtr window, uint color, byte alpha, uint flags);
+        [DllImport("user32.dll")]
+        internal static extern bool InvalidateRect(IntPtr window, IntPtr bounds, bool erase);
+        [DllImport("user32.dll")]
+        internal static extern IntPtr BeginPaint(IntPtr window, out PaintInfo paint);
+        [DllImport("user32.dll")]
+        internal static extern bool EndPaint(IntPtr window, ref PaintInfo paint);
         [DllImport("user32.dll")]
         internal static extern bool SetForegroundWindow(IntPtr window);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
@@ -21,12 +50,58 @@ namespace Gamepad
         {
             if (hwnd == IntPtr.Zero)
                 return true;
-            var s = new System.Text.StringBuilder(128);
-            GetClassName(hwnd, s, s.Capacity);
-            var name = s.ToString();
+            string name = WindowClass(hwnd);
             return name == "Shell_TrayWnd" || name == "Shell_SecondaryTrayWnd" ||
                    name == "NotifyIconOverflowWindow" || name == "TopLevelWindowForOverflowXamlIsland" ||
                    name == "#32768";
+        }
+        static string WindowClass(IntPtr window)
+        {
+            var name = new System.Text.StringBuilder(128);
+            GetClassName(window, name, name.Capacity);
+            return name.ToString();
+        }
+        internal static bool IsSearchProcess(string name)
+        {
+            return String.Equals(name, "SearchHost", StringComparison.OrdinalIgnoreCase) ||
+                   String.Equals(name, "SearchApp", StringComparison.OrdinalIgnoreCase);
+        }
+        internal static bool IsSearchSurface(IntPtr window)
+        {
+            return WindowClass(window) == "Windows.UI.Core.CoreWindow" && IsSearchProcess(ProcessNameOf(window));
+        }
+        internal static bool IsShellBackSurface(IntPtr window)
+        {
+            switch (WindowClass(window))
+            {
+            case "Windows.UI.Core.CoreWindow":
+                var core = ProcessNameOf(window);
+                return IsSearchProcess(core) ||
+                       String.Equals(core, "StartMenuExperienceHost", StringComparison.OrdinalIgnoreCase);
+            case "Shell_TrayWnd":
+            case "Shell_SecondaryTrayWnd":
+            case "NotifyIconOverflowWindow":
+            case "TopLevelWindowForOverflowXamlIsland":
+                return String.Equals(ProcessNameOf(window), "explorer", StringComparison.OrdinalIgnoreCase);
+            case "ControlCenterWindow":
+            case "NotificationCenterWindow":
+                var system = ProcessNameOf(window);
+                return String.Equals(system, "ShellHost", StringComparison.OrdinalIgnoreCase) ||
+                       String.Equals(system, "ShellExperienceHost", StringComparison.OrdinalIgnoreCase);
+            default:
+                return false;
+            }
+        }
+        [StructLayout(LayoutKind.Sequential)]
+        struct WindowRectangle { public int Left, Top, Right, Bottom; }
+        [DllImport("user32.dll")]
+        static extern bool GetWindowRect(IntPtr window, out WindowRectangle bounds);
+        internal static Rectangle WindowBounds(IntPtr window)
+        {
+            WindowRectangle bounds;
+            return GetWindowRect(window, out bounds)
+                       ? Rectangle.FromLTRB(bounds.Left, bounds.Top, bounds.Right, bounds.Bottom)
+                       : Rectangle.Empty;
         }
         [DllImport("user32.dll")]
         internal static extern IntPtr GetForegroundWindow();
@@ -36,6 +111,26 @@ namespace Gamepad
         internal static extern bool IsWindow(IntPtr hwnd);
         [DllImport("user32.dll")]
         internal static extern uint GetWindowThreadProcessId(IntPtr hwnd, out int pid);
+        internal static string ProcessNameOf(IntPtr window)
+        {
+            int pid;
+            GetWindowThreadProcessId(window, out pid);
+            if (pid != 0)
+                try
+                {
+                    using (var process = Process.GetProcessById(pid)) return process.ProcessName;
+                }
+                catch (ArgumentException)
+                {
+                }
+                catch (InvalidOperationException)
+                {
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                }
+            return "";
+        }
         [DllImport("user32.dll")]
         internal static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint key);
         [DllImport("user32.dll")]

@@ -3,5 +3,6 @@ using System.Reflection;
 [assembly: AssemblyTitle("Windows Gamepad Desktop")]
 [assembly: AssemblyProduct("Windows Gamepad Desktop")]
 [assembly: AssemblyDescription("XInput 桌面控制与无焦点手柄键盘")]
-[assembly: AssemblyVersion("0.9.11.0")]
-[assembly: AssemblyFileVersion("0.9.11.0")]
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyInformationalVersion("1.0.0")]

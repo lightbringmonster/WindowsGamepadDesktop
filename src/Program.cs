@@ -46,15 +46,15 @@ namespace Gamepad
                         error = ex.Message;
                     }
                 if (error != null)
-                    MessageBox.Show("配置无法载入，已使用默认值。原文件保留至下一次保存。\n" + error,
-                                    "Windows Gamepad Desktop");
+                    PopupNotice.ShowNotice("本次启动已使用默认设置。原配置会保留到下次保存。\n" + error,
+                                           "配置无法载入");
                 var host = new Host(cfg, new XInputControllerProvider(), new NativeInput(),
                                     Array.IndexOf(args, "--tray") < 0 && (!File.Exists(SettingsStore.Location) ||
                                                                           Array.IndexOf(args, "--settings") >= 0));
                 Application.ThreadException += (s, e) =>
                 {
                     host.Pause(true);
-                    MessageBox.Show("映射已暂停。\n" + e.Exception.GetType().Name, "Windows Gamepad Desktop");
+                    PopupNotice.ShowNotice(e.Exception.GetType().Name, "映射已暂停");
                 };
                 try
                 {

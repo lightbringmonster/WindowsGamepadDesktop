@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -163,67 +162,10 @@ namespace Gamepad
             }
         }
     }
-    internal sealed class ModeToast : Form
-    {
-        readonly Timer timeout = new Timer { Interval = 1250 };
-        string label = "";
-        public ModeToast()
-        {
-            FormBorderStyle = FormBorderStyle.None;
-            ShowInTaskbar = false;
-            TopMost = true;
-            StartPosition = FormStartPosition.Manual;
-            BackColor = Color.FromArgb(23, 40, 44);
-            ForeColor = Color.White;
-            DoubleBuffered = true;
-            timeout.Tick += (s, e) =>
-            {
-                timeout.Stop();
-                Hide();
-            };
-        }
-        protected override bool ShowWithoutActivation
-        {
-            get {
-                return true;
-            }
-        }
-        protected override CreateParams CreateParams
-        {
-            get {
-                var p = base.CreateParams;
-                p.ExStyle |= 0x080000a0;
-                return p;
-            }
-        }
-        public void Present(string text)
-        {
-            label = text;
-            Text = text;
-            var r = Screen.FromHandle(Win.GetForegroundWindow()).WorkingArea;
-            int w = Math.Max(220, r.Width / 5), h = Math.Max(50, r.Height / 14);
-            Bounds = new Rectangle(r.Left + (r.Width - w) / 2, r.Top + h / 3, w, h);
-            Show();
-            Invalidate();
-            timeout.Stop();
-            timeout.Start();
-        }
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            using (var f = new Font("Microsoft YaHei UI", Height * .33f, FontStyle.Bold, GraphicsUnit.Pixel))
-                TextRenderer.DrawText(e.Graphics, label, f, ClientRectangle, Color.FromArgb(158, 242, 213),
-                                      TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-        }
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-                timeout.Dispose();
-            base.Dispose(disposing);
-        }
-    }
     internal sealed partial class Host
     {
         MessageSink messages;
+        ShellBackKeyFilter shellBack;
         ModeToast toast;
         SettingsWindow settings;
         internal bool HotkeyAvailable
@@ -247,16 +189,19 @@ namespace Gamepad
         partial void InitializeSystem()
         {
             toast = new ModeToast();
+            shellBack = new ShellBackKeyFilter(ShouldConsumeShellBack);
             messages = new MessageSink(() => Pause(true), CancelFocusRequest,
                                        locked =>
                                        {
                                            systemBlocked = locked;
-                                           CloseKeyboard();
+                                           CloseOverlay();
                                        },
                                        () => ShowSettings(), () => ExitThread(), Tick);
         }
         partial void StopSystem()
         {
+            if (shellBack != null)
+                shellBack.Dispose();
             if (focus != null)
                 focus.Dispose();
             if (settings != null)
@@ -282,7 +227,7 @@ namespace Gamepad
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "自启动");
+                    PopupNotice.ShowNotice(ex.Message, "无法更改自启动");
                 }
             };
             m.Items.Add(item);

@@ -328,7 +328,7 @@ namespace Gamepad
                                                                 }
                                                                 catch (Exception ex)
                                                                 {
-                                                                    MessageBox.Show(this, ex.Message);
+                                                                    PopupNotice.ShowNotice(ex.Message, "无法载入配置", this);
                                                                 }
                                                             }));
                 f.Controls.Add(Line("配置名（可留空）", profiles));
@@ -434,7 +434,7 @@ namespace Gamepad
             }
             catch (Exception e)
             {
-                MessageBox.Show(this, e.Message, "无法保存设置");
+                PopupNotice.ShowNotice(e.Message, "无法保存设置", this);
             }
         }
         void Import()
@@ -449,7 +449,7 @@ namespace Gamepad
             }
             catch (Exception e)
             {
-                MessageBox.Show(this, e.Message, "导入失败");
+                PopupNotice.ShowNotice(e.Message, "导入失败", this);
             }
         }
         void Export()
@@ -463,7 +463,7 @@ namespace Gamepad
             }
             catch (Exception e)
             {
-                MessageBox.Show(this, e.Message, "导出失败");
+                PopupNotice.ShowNotice(e.Message, "导出失败", this);
             }
         }
     }
