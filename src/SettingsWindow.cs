@@ -13,7 +13,7 @@ namespace Gamepad
         readonly Host host;
         Settings draft;
         string deviceId;
-        bool loading;
+        bool loading, identifying;
         readonly Panel content = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 14, 20, 12) };
         readonly Label heading = new Label { Dock = DockStyle.Top, Height = 48 };
         readonly FlowLayoutPanel nav =
@@ -28,6 +28,8 @@ namespace Gamepad
         readonly Label status = Caption(""), capabilities = Caption("");
         readonly StickView live = new StickView();
         readonly DataGridView grid = new DataGridView();
+        readonly Button identifyButton;
+        readonly Label identifyStatus = Caption("");
         readonly TextBox combination = new TextBox(), apps = new TextBox { Multiline = true, AcceptsReturn = true,
                                                                            ScrollBars = ScrollBars.Vertical };
         readonly CheckBox auto = new CheckBox { Text = "手柄选中可编辑输入框时自动打开键盘", AutoSize = true };
@@ -89,12 +91,19 @@ namespace Gamepad
             startup.Items.AddRange(new[] { "桌面键鼠", "原生手柄", "沿用上次退出模式" });
             display.Items.Add("跟随目标输入框");
             display.Items.AddRange(Screen.AllScreens.Select(s => s.DeviceName).ToArray());
+            identifyButton = Button("识别按键", ToggleBindingCapture);
+            identifyStatus.Visible = false;
             SetupGrid();
             device.SelectedIndexChanged += (s, e) => SwitchDevice();
             InitDraft();
             refresh.Tick += (s, e) => RefreshDevice();
             refresh.Start();
-            FormClosed += (s, e) => refresh.Dispose();
+            Deactivate += (s, e) => CancelBindingCapture();
+            FormClosed += (s, e) =>
+            {
+                CancelBindingCapture();
+                refresh.Dispose();
+            };
             SelectPage(0);
         }
         static Label Caption(string text)
@@ -195,6 +204,8 @@ namespace Gamepad
         {
             if (loading || device.SelectedIndex < 0)
                 return;
+            CancelBindingCapture();
+            identifyStatus.Visible = false;
             StoreProfile();
             var d = host.Devices.ElementAt(device.SelectedIndex);
             deviceId = d.Id;
@@ -214,6 +225,8 @@ namespace Gamepad
         }
         void AssignProfile()
         {
+            CancelBindingCapture();
+            identifyStatus.Visible = false;
             StoreProfile();
             string name = profileName.Text.Trim();
             if (name.Length > 64)
@@ -276,13 +289,55 @@ namespace Gamepad
             if (page == 0)
                 live.Invalidate();
         }
+        void ToggleBindingCapture()
+        {
+            if (identifying)
+            {
+                CancelBindingCapture();
+                return;
+            }
+            grid.EndEdit();
+            var inputs = grid.Rows.Cast<DataGridViewRow>().Select(row => (string)row.Cells[0].Value);
+            identifying = host.StartBindingCapture(deviceId, Handle, inputs, OnBindingCaptured);
+            identifyButton.Text = identifying ? "取消识别" : "识别按键";
+            identifyStatus.Text = identifying ? "松开按键、摇杆回中后，按一个键或拨动摇杆。"
+                                               : "请连接所选手柄后重试。";
+            identifyStatus.Show();
+        }
+        void CancelBindingCapture()
+        {
+            if (identifying && IsHandleCreated)
+                host.CancelBindingCapture(Handle);
+        }
+        void OnBindingCaptured(string input, string message)
+        {
+            identifying = false;
+            if (IsDisposed || Disposing)
+                return;
+            identifyButton.Text = "识别按键";
+            if (input != null)
+            {
+                var row = grid.Rows.Cast<DataGridViewRow>().FirstOrDefault(r => (string)r.Cells[0].Value == input);
+                if (row != null)
+                {
+                    grid.ClearSelection();
+                    grid.CurrentCell = row.Cells[0];
+                    row.Selected = true;
+                    grid.FirstDisplayedScrollingRowIndex = row.Index;
+                }
+            }
+            identifyStatus.Text = message ?? "已定位到 " + input + "。";
+            identifyStatus.Show();
+        }
         void SelectPage(int i)
         {
+            CancelBindingCapture();
+            identifyStatus.Visible = false;
             page = i;
             content.SuspendLayout();
             foreach (Control shared in new Control[] { heading, status, primary, device, capabilities, live, speed,
                                                        dead, curve, profileName, combination, grid, auto, layout,
-                                                       display, height, apps, startup })
+                                                       display, height, apps, startup, identifyButton, identifyStatus })
                 if (shared.Parent != null)
                     shared.Parent.Controls.Remove(shared);
             foreach (Control old in content.Controls.Cast<Control>().ToArray())
@@ -348,9 +403,11 @@ namespace Gamepad
                                                      }
                                                  });
                 var tools = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
+                tools.Controls.Add(identifyButton);
                 tools.Controls.Add(picker);
                 tools.Controls.Add(use);
                 f.Controls.Add(tools);
+                f.Controls.Add(identifyStatus);
                 grid.Width = Math.Max(445, content.ClientSize.Width - 94);
                 grid.Height = Math.Max(200, content.ClientSize.Height - 295);
                 f.Controls.Add(grid);
@@ -418,6 +475,11 @@ namespace Gamepad
         }
         protected override bool ProcessCmdKey(ref Message message, Keys key)
         {
+            if (key == Keys.Escape && identifying)
+            {
+                CancelBindingCapture();
+                return true;
+            }
             if (key == Keys.Escape && !grid.IsCurrentCellInEditMode)
             {
                 Close();
@@ -427,6 +489,7 @@ namespace Gamepad
         }
         void Save()
         {
+            CancelBindingCapture();
             try
             {
                 host.Apply(SettingsStore.Decode(SettingsStore.Encode(Gather())));

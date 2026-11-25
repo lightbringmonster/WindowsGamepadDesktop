@@ -40,8 +40,12 @@ namespace Gamepad
         }
         public void Reset()
         {
-            modeGesture.Reset();
             selectedGear = PointerGear.Standard;
+            ResetInput();
+        }
+        internal void ResetInput()
+        {
+            modeGesture.Reset();
             ResetMapping();
         }
         void ResetMapping()

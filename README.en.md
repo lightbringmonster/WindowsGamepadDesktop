@@ -67,6 +67,8 @@ The keyboard opens on the target display by default and moves out of the way of 
 
 ## Controllers and settings
 
+In **按键映射** (Key Mapping), select a device and click **识别按键** (Identify Input). Release the other controls and center the sticks, then press one button or move one stick to highlight its mapping row. The app pauses mouse and keyboard output during identification. Choose the action and click **保存设置** (Save settings).
+
 XInput exposes up to four slots. Automatic primary selection stays on the first selected slot for the current session. If it disconnects, the desktop mapper waits for that slot to return. Select another slot in settings to change the primary controller.
 
 Slot numbers are temporary. Save a named mapping profile to reassign it when your controller changes slots. XInput devices expose a common set of controls, and other provider capabilities can add controls. See [hardware extensions](HARDWARE_EXTENSION.en.md).

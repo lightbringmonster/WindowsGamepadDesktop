@@ -140,7 +140,7 @@ namespace Gamepad
         }
         bool ShouldConsumeShellBack()
         {
-            if (closing || paused || game || systemBlocked || activeDevice == null)
+            if (closing || paused || game || systemBlocked || activeDevice == null || bindingCapture != null)
                 return false;
             var foreground = Win.GetForegroundWindow();
             bool overlay = keyboard.Visible || audioWindow.Visible;
@@ -324,6 +324,7 @@ namespace Gamepad
         internal void Pause(bool value)
         {
             paused = value;
+            FinishBindingCapture(null, "识别已取消。");
             CloseOverlay();
             Notify(ModeName);
         }
@@ -360,7 +361,7 @@ namespace Gamepad
             foreach (var d in manager.Devices)
                 if (selected == d.Id)
                     States[d.Id] = pointer.Latest();
-                else if (scan ||
+                else if (scan || (bindingCapture != null && bindingCapture.DeviceId == d.Id) ||
                     (SettingsVisible && States.ContainsKey(d.Id) && States[d.Id].Connected))
                     States[d.Id] = d.Read();
             // Keep using the selected controller until discovery or a fresh sample requires reselection.
@@ -377,7 +378,9 @@ namespace Gamepad
                 engine.Reset();
                 CloseOverlay();
             }
-            if (id != null && !SessionBlocked)
+            if (bindingCapture != null)
+                SampleBindingCapture(fg, now);
+            else if (id != null && !SessionBlocked)
             {
                 var profile = Config.For(id);
                 engine.Tick(States[id], profile, now);
@@ -388,8 +391,11 @@ namespace Gamepad
             }
             else
                 engine.Reset();
-            CheckFocus(now);
-            messages.SetPollInterval(id == null ? (keyboard.Visible || audioWindow.Visible ? 100 : 250) : 15);
+            if (bindingCapture == null)
+                CheckFocus(now);
+            messages.SetPollInterval(id == null && bindingCapture == null
+                                         ? (keyboard.Visible || audioWindow.Visible ? 100 : 250)
+                                         : 15);
         }
         internal void Apply(Settings next)
         {
@@ -444,6 +450,7 @@ namespace Gamepad
             if (closing)
                 return;
             closing = true;
+            FinishBindingCapture(null, "识别已取消。");
             CloseOverlay();
             engine.Reset();
             pointer.Dispose();
