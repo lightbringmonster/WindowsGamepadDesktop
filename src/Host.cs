@@ -178,20 +178,26 @@ namespace Gamepad
         }
         void ToggleGame()
         {
-            SetGame(!game, true);
+            SetGame(!game);
         }
         void ToggleModeLock()
         {
             modeLocked = !modeLocked;
             Notify(modeLocked ? ModeName : ModeName + " · 已解锁");
         }
-        void SetGame(bool value, bool manual = false)
+        void SetGame(bool value, bool applicationRule = false)
         {
-            if (modeLocked || game == value)
+            if (modeLocked)
                 return;
+            if (game == value)
+            {
+                if (applicationRule && game && !paused)
+                    Notify("原生手柄 · 应用规则");
+                return;
+            }
             game = value;
             CloseKeyboard();
-            Notify(manual ? "已切换 · " + (game ? "原生手柄" : "桌面键鼠") : ModeName);
+            Notify(applicationRule && paused ? ModeName : "已切换 · " + (game ? "原生手柄" : "桌面键鼠"));
         }
         internal void Pause(bool value)
         {
@@ -223,7 +229,7 @@ namespace Gamepad
             firstRule = false;
             bool? transition = policy.Enter(name, Config.GameApps);
             if (transition.HasValue)
-                SetGame(transition.Value);
+                SetGame(transition.Value, applicationRule: true);
         }
         void Tick()
         {
