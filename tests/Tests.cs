@@ -59,6 +59,11 @@ namespace Gamepad
                 ExplorerChecks(args[1]);
                 return;
             }
+            if (args.Length == 2 && args[0] == "--popup-preview")
+            {
+                PopupChecks(args[1]);
+                return;
+            }
             if (args.Contains("--startup-mode"))
             {
                 StartupModeChecks();
