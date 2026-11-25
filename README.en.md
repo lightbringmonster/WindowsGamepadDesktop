@@ -42,7 +42,7 @@ Desktop mode is the default at launch. Under **Settings → 设备 (Devices) →
 | Left stick / Right stick | Move the pointer / Scroll horizontally and vertically |
 | B / X | Left click or hold to drag / Right click |
 | LT | Tap to toggle standard and fine. Hold for at least 150 ms for temporary ultra-fine motion |
-| RT | Hold to open the quick actions wheel |
+| RT | Center the pointer stick, then hold RT to open the quick actions wheel |
 | A / Y | Escape / Enter |
 | D-pad | Arrow keys, with repeat |
 | LB / RB | Alt + Tab / Toggle the on-screen keyboard |
