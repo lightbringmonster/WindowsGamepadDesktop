@@ -69,6 +69,11 @@ namespace Gamepad
                 RadialWindowChecks(args[1]);
                 return;
             }
+            if (args.Length == 2 && args[0] == "--audio-preview")
+            {
+                AudioWindowChecks(args[1]);
+                return;
+            }
             if (args.Contains("--startup-mode"))
             {
                 StartupModeChecks();

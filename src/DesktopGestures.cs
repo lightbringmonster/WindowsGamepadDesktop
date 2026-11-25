@@ -14,11 +14,9 @@ namespace Gamepad
         internal static readonly RadialAction[] Items = {
             new RadialAction("开始菜单", "Win"),
             new RadialAction("任务视图", "Win+Tab"),
-            new RadialAction("切换窗口", "Alt+Tab"),
             new RadialAction("显示桌面", "Win+D"),
-            new RadialAction("锁屏", "Win+L"),
-            new RadialAction("降低音量", "VolumeDown"),
-            new RadialAction("提高音量", "VolumeUp"),
+            new RadialAction("声音输出", AudioFlow.Output),
+            new RadialAction("声音输入", AudioFlow.Input),
             new RadialAction("撤销", "Ctrl+Z"),
             new RadialAction("粘贴", "Ctrl+V"),
             new RadialAction("复制", "Ctrl+C"),
@@ -27,11 +25,18 @@ namespace Gamepad
 
         internal readonly string Label;
         internal readonly int[] Keys;
+        internal readonly AudioFlow? Audio;
 
         RadialAction(string label, string shortcut)
         {
             Label = label;
             Keys = KeyBinding.Parse("Key:" + shortcut);
+        }
+
+        RadialAction(string label, AudioFlow flow)
+        {
+            Label = label;
+            Audio = flow;
         }
 
         internal static int Select(ControllerState state, int previous)
