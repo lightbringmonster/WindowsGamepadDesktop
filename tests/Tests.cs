@@ -147,6 +147,7 @@ namespace Gamepad
                 Console.WriteLine("PROBE " + d.Id + " " + d.Read().Connected);
             More();
             FinalChecks();
+            PointerWorkerChecks();
             Console.WriteLine("Passed " + count + " checks");
         }
         static partial void More();
