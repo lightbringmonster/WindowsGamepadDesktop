@@ -15,6 +15,7 @@ namespace Gamepad
         readonly PointerWorker pointer;
         readonly IInputSink sink;
         readonly string settingsPath;
+        string configurationLoadWarning;
         internal Settings Config;
         internal readonly Dictionary<string, ControllerState> States = new Dictionary<string, ControllerState>();
         readonly Stopwatch clock = Stopwatch.StartNew();
@@ -34,10 +35,11 @@ namespace Gamepad
         readonly ApplicationProfiles policy = new ApplicationProfiles();
         bool firstRule = true;
         public Host(Settings cfg, IControllerProvider provider, IInputSink output, bool openSettings,
-                    string settingsPath = null, IAudioDevices audioDevices = null)
+                    string settingsPath = null, IAudioDevices audioDevices = null, string configurationLoadWarning = null)
         {
             Config = cfg;
             this.settingsPath = settingsPath ?? SettingsStore.Location;
+            this.configurationLoadWarning = configurationLoadWarning;
             this.audioDevices = audioDevices ?? new WindowsAudioDevices();
             game = cfg.StartsNative;
             sink = output;
@@ -307,19 +309,20 @@ namespace Gamepad
             modeLocked = !modeLocked;
             Notify(modeLocked ? ModeName : ModeName + " · 已解锁");
         }
-        void SetGame(bool value, bool applicationRule = false)
+        void SetGame(bool value, bool applicationRule = false, bool showNotice = true)
         {
             if (modeLocked)
                 return;
             if (game == value)
             {
-                if (applicationRule && game && !paused)
+                if (showNotice && applicationRule && game && !paused)
                     Notify("原生手柄 · 应用规则");
                 return;
             }
             game = value;
             CloseOverlay();
-            Notify(applicationRule && paused ? ModeName : "已切换 · " + (game ? "原生手柄" : "桌面键鼠"));
+            if (showNotice)
+                Notify(applicationRule && paused ? ModeName : "已切换 · " + (game ? "原生手柄" : "桌面键鼠"));
         }
         internal void Pause(bool value)
         {
@@ -333,6 +336,7 @@ namespace Gamepad
         {
             if (hwnd == observed && !firstRule)
                 return;
+            bool showNotice = observed != IntPtr.Zero;
             observed = hwnd;
             if (!Win.IsShellMenu(hwnd))
                 lastApp = hwnd;
@@ -341,7 +345,7 @@ namespace Gamepad
             firstRule = false;
             bool? transition = policy.Enter(name, Config.GameApps);
             if (transition.HasValue)
-                SetGame(transition.Value, applicationRule: true);
+                SetGame(transition.Value, applicationRule: true, showNotice: showNotice);
         }
         void Tick()
         {

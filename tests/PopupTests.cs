@@ -110,6 +110,7 @@ namespace Gamepad
                 owner.Bounds = Screen.FromControl(owner).Bounds;
                 owner.TopMost = true;
                 FocusOwnedWindow(owner.Handle);
+                StartupGameRuleIsSilent(owner);
                 GameRuleToast(owner, "Native", "原生手柄 · 应用规则",
                               Path.Combine(directory, "game-mode-continued.png"));
                 GameRuleToast(owner, "Desktop", "已切换 · 原生手柄",
@@ -117,17 +118,43 @@ namespace Gamepad
             }
         }
 
-        static void GameRuleToast(Form gameWindow, string startupMode, string message, string screenshot)
+        static string CurrentProcessFile()
         {
-            string process;
             using (var current = Process.GetCurrentProcess())
-                process = current.ProcessName + ".exe";
-            var cfg = new Settings { StartupMode = startupMode, GameApps = new[] { process } };
+                return current.ProcessName + ".exe";
+        }
+
+        static void StartupGameRuleIsSilent(Form foreground)
+        {
+            var cfg = new Settings { GameApps = new[] { CurrentProcessFile() } };
             var provider = new SimProvider { Devices = new IControllerDevice[0] };
             using (var host = new Host(cfg, provider, new Capture(), false))
             {
                 try
                 {
+                    Await(() => host.ModeName == "原生手柄", "startup still applies the active game rule", 1100);
+                    Check(Win.GetForegroundWindow() == foreground.Handle &&
+                              !IsWindowVisible(FindWindow(null, "已切换 · 原生手柄")),
+                          "initial foreground rule leaves startup silent");
+                }
+                finally
+                {
+                    host.ExitThread();
+                }
+            }
+        }
+
+        static void GameRuleToast(Form gameWindow, string startupMode, string message, string screenshot)
+        {
+            var cfg = new Settings { StartupMode = startupMode, GameApps = new string[0] };
+            var provider = new SimProvider { Devices = new IControllerDevice[0] };
+            string path = Path.Combine(Path.GetTempPath(), "GamepadToast-" + Guid.NewGuid().ToString("N") + ".json");
+            using (var host = new Host(cfg, provider, new Capture(), false, path))
+            {
+                try
+                {
+                    Pump(250);
+                    host.Apply(new Settings { StartupMode = startupMode, GameApps = new[] { CurrentProcessFile() } });
                     Await(() => host.ModeName == "原生手柄" && IsWindowVisible(FindWindow(null, message)),
                           "foreground game rule displays " + message, 1100);
                     Check(Win.GetForegroundWindow() == gameWindow.Handle, "game mode toast preserves game focus");
@@ -136,6 +163,8 @@ namespace Gamepad
                 finally
                 {
                     host.ExitThread();
+                    if (File.Exists(path))
+                        File.Delete(path);
                 }
             }
         }
