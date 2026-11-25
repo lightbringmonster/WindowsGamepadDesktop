@@ -2,7 +2,7 @@
 
 [Documentation home](README.en.md) · [简体中文](DEVELOPMENT.md) · **English**
 
-Version 1.0.0, Windows 11 x64 portable edition. The Git repository contains the application source, tests, and offline data. The release package contains the executable, offline data, and documentation. Development and testing use a Dell G15 5520 with Windows 11 Pro build 26300.
+Version 1.1.0, Windows 11 x64 portable edition. The Git repository contains the application source, tests, and offline data. The release package contains the executable, offline data, and documentation. Development and testing use a Dell G15 5520 with Windows 11 Pro build 26300.
 
 ## Building from Source
 
@@ -37,6 +37,10 @@ Windows 11 has a native touch keyboard with gamepad navigation, X to delete, and
 | 8 Flydigi-specific work | Delivered only the capability model, extension interfaces, simulated-axis validation, and integration documentation, pending physical hardware and protocol evidence. |
 
 The reference repository's file-location list was extracted read-only by DeepSeek Harness, and the coordinator reviewed the license, project files, and concrete implementation. The headless configuration declared the model deepseek-flash. Run events included thinking output and did not provide a named thinking-effort level.
+
+## 1.1.0
+
+The mapping editor can identify a button, trigger, or stick on the selected controller. Normal launches go straight to the notification area. Fine and ultra-fine pointer modes respond sooner to small movements beyond the dead zone, and holding RT while moving the pointer preserves cursor motion.
 
 ## 1.0.0
 

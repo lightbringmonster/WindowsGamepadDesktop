@@ -6,7 +6,7 @@ Use an XInput gamepad as a mouse and keyboard on Windows 11 x64. The default lay
 
 ![Pinyin on-screen keyboard with a sentence candidate and controller shortcuts](docs/images/keyboard-pinyin.png)
 
-[Download the Windows x64 portable package](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest) · [v1.0.0 release notes](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/v1.0.0) · [0.9.x archive](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/archive-0.9)
+[Download the Windows x64 portable package](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest) · [v1.1.0 release notes](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/v1.1.0) · [0.9.x archive](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/archive-0.9)
 
 ## Build from source
 

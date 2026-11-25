@@ -8,7 +8,7 @@ Windows 11 x64 手柄桌面控制器。使用 Xbox 字母标记，桌面与屏�
 
 ![Windows Gamepad Desktop 拼音键盘，显示整句候选与手柄按键提示](docs/images/keyboard-pinyin.png)
 
-[下载 Windows x64 便携版](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest) · [v1.0.0 发布说明](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/v1.0.0) · [0.9.x 历史归档](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/archive-0.9)
+[下载 Windows x64 便携版](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/latest) · [v1.1.0 发布说明](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/v1.1.0) · [0.9.x 历史归档](https://github.com/lightbringmonster/WindowsGamepadDesktop/releases/tag/archive-0.9)
 
 ## 从源码构建
 
