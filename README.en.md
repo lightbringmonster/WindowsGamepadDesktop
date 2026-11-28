@@ -33,6 +33,8 @@ Run `WindowsGamepadDesktop.exe` to start in the notification area. Double-click 
 
 **Ctrl + Alt + F12** pauses input mapping. Clear **暂停映射** in the notification area menu to resume. Double-click the notification area icon to open settings.
 
+If the controller's Home button brings up an `ms-gamebar` prompt, select **阻止手柄打开 Xbox Game Bar** (Block controller launch of Xbox Game Bar) from the tray menu. It updates the Windows setting for your account. Clear it to allow controller launch again.
+
 Desktop mode is the default at launch. Under **Settings → 设备 (Devices) → 启动模式 (Startup Mode)**, you can choose native gamepad mode or restore the mode from the last normal exit. The selection applies on the next launch.
 
 ## Desktop controls
