@@ -231,6 +231,33 @@ namespace Gamepad
                 }
             };
             m.Items.Add(item);
+
+            var gameBar = new ToolStripMenuItem("阻止手柄打开 Xbox Game Bar") {
+                ToolTipText = "修改当前 Windows 用户的手柄唤起设置"
+            };
+            try
+            {
+                gameBar.Checked = GameBarController.IsBlocked(Registry.CurrentUser);
+            }
+            catch (Exception)
+            {
+                gameBar.Enabled = false;
+                gameBar.ToolTipText = "无法读取 Windows 的 Game Bar 设置";
+            }
+            gameBar.Click += (s, e) =>
+            {
+                try
+                {
+                    bool blocked = !gameBar.Checked;
+                    GameBarController.SetBlocked(Registry.CurrentUser, blocked);
+                    gameBar.Checked = blocked;
+                }
+                catch (Exception ex)
+                {
+                    PopupNotice.ShowNotice(ex.Message, "无法更改 Xbox Game Bar 设置");
+                }
+            };
+            m.Items.Add(gameBar);
         }
         partial void ShowSettings()
         {

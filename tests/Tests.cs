@@ -165,6 +165,7 @@ namespace Gamepad
             PointerWorkerChecks();
             DesktopGestureChecks();
             BindingCaptureChecks();
+            GameBarControllerChecks();
             Console.WriteLine("Passed " + count + " checks");
         }
         static partial void More();
